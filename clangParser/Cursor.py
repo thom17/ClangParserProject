@@ -2,7 +2,13 @@ from clang.cindex import Cursor as clangCursor
 from clang.cindex import SourceLocation
 from clang.cindex import TranslationUnit
 from clang.cindex import SourceRange
+from clang.cindex import CursorKind
 
+#안전하게 srcName을 뽑아낼 수 있는 타입
+safe_src_type = [CursorKind.CLASS_DECL, CursorKind.CXX_METHOD, CursorKind.FIELD_DECL, CursorKind.PARM_DECL, CursorKind.VAR_DECL, CursorKind.CONSTRUCTOR]
+
+
+cursor_map ={}
 
 class Cursor:
     """
@@ -11,6 +17,7 @@ class Cursor:
 
     def __init__(self, node: clangCursor, source_code: str = None):
         assert isinstance(node, clangCursor), f"node{type(node)} must be an instance of clang.cindex.Cursor"
+
         self.node = node
         self.spelling = node.spelling
         self.location: SourceLocation = node.location
@@ -64,51 +71,122 @@ class Cursor:
             'code': self.get_range_code()
         }
 
-
-    # 기존 코드
-    # def get_range_code(self):
-    #     extent = self.extend
-    #     start: SourceLocation = extent.start
-    #     end: SourceLocation = extent.end
-    #
-    #     assert start.file.name == end.file.name, f"시작과 끝이 서로 다른 파일{start} , {end}"
-    #
-    #     with open(start.file.name, 'r') as file:
-    #         source_code = file.read()
-    #
-    #         # 소스 코드 내에서 시작 위치와 종료 위치를 계산합니다.
-    #         # libclang은 1 기반 인덱싱을 사용하므로, 파이썬의 0 기반 인덱싱으로 조정합니다.
-    #         start_offset = source_code.rfind('\n', 0, source_code.find('\n', self.extend.start.offset)) + 1
-    #         end_offset = source_code.find('\n', self.extend.end.offset)
-    #
-    #         # 시작 위치와 종료 위치 사이의 문자열을 반환합니다.
-    #         return source_code[start_offset:end_offset]
-
-    def get_range_code(self, code: str = None):
+    def get_src_name(self, node=None):
         """
-        Returns the source code for the specific range including column information.
+        그 srcName
+        클래스.메서드.메서드.변수, 파일.변수, 파일.매서드
+        정리되기 전까지는 특정 노드만 사용하자
+        :return:
         """
+
+        if node is None:
+            node=self.node
+
+        #assert node.type in safe_src_type, f"{node.type}은 srcName 출력 불가"
+        #assert node.semantic_parent, f"{node.kind}은 srcName 출력 불가"
+
+        #파일 자체의 매서드, 변수이거나 클래스 내부이거나
+        if node.kind == CursorKind.CLASS_DECL or node.kind == CursorKind.TRANSLATION_UNIT:
+            return node.spelling
+        else:
+            return self.get_src_name(node.semantic_parent) + "." + node.displayname #display가 sig로 나오는듯
+
+    def get_call_definition(self, target_stmt= ["CALL_EXPR", "MEMBER_REF_EXPR", "DECL_REF_EXPR", "UNEXPOSED_EXPR"]):
+        """
+        DFS로 target_stmt의 defintion node를 구한다.
+        :param target_stmt:
+        :return:
+        """
+        dec_list: ['Cursor'] = []
+        queue = [self.node]
+
+        while queue:
+            node = queue.pop(0)
+            stmt = node.kind.name
+            if stmt in target_stmt:
+                def_node = node.get_definition()
+                if def_node:
+                    new_cursor = Cursor(def_node, self.source_code)
+                    dec_list.append(new_cursor)
+            queue[:0] = node.get_children()
+        return dec_list
+
+    def get_call_definition_map(self, target_stmt= ["CALL_EXPR", "MEMBER_REF_EXPR", "DECL_REF_EXPR", "UNEXPOSED_EXPR"])->dict[clangCursor, clangCursor]:
+        """
+        DFS로 target_stmt의 defintion node를 구한다.
+        :param target_stmt:
+        :return dec_dict: [call_node: clangCursor, def_node: clangCursor]
+        """
+        dec_dict: ['Cursor' 'Cursor'] = {}
+        queue = [self.node]
+
+        while queue:
+            node = queue.pop(0)
+            stmt = node.kind.name
+            if stmt in target_stmt:
+                def_node = node.get_definition()
+                if def_node:
+                    dec_dict[node] = def_node
+            queue[:0] = node.get_children()
+        return dec_dict
+
+
+    def read_file(self) -> (str, int):
+        """
+        해당 노드의 파일 읽기. 우선순위도 함께 반환
+        1. range 코드
+        2. location Code
+        3. unit path
+        :return:
+        """
+
         extent = self.node.extent
         start = extent.start
         end = extent.end
 
-        if not (start.file and end.file and start.file.name == end.file.name):
-            print("시작과 끝이 다른 파일")
+        mod = None
+        while True:
+            if start.file and end.file and start.file.name == end.file.name and not mod:
+                mod = 1
+                file_path = start.file.name
+            elif self.location.file and mod != 2:
+                mod = 2
+                file_path = self.location.file.name
+            elif mod != 3:
+                mod = 3
+                file_path = self.translation_unit.spelling
+            else:
+                assert True, "Read File Fail"
+                return ""
+            try:
+                with open(file_path, 'r') as file:
+                    return (file.read(), mod)
+            except:
+                print(f"{file_path}  read Fail")
+                return ""
 
-            return ""
 
-        try:
-            with open(start.file.name, 'r') as file:
-                source_code = file.read()
-        except:
-            print(start.file.name," read Fail")
-            source_code = self.source_code
-            return ""
-            # Calculate the exact character offset for start and end
-        start_index = self.calculate_offset(source_code, start.line, start.column)
-        end_index = self.calculate_offset(source_code, end.line, end.column)
+    def get_range_code(self):
+        """
+        Returns the source code for the specific range including column information.
+        """
 
-        return source_code[start_index:end_index]
+        source_code, mod = self.read_file()
+
+        if mod == 1:
+            extent = self.node.extent
+            start = extent.start
+            end = extent.end
+
+            start_index = self.calculate_offset(source_code, start.line, start.column)
+            end_index = self.calculate_offset(source_code, end.line, end.column)
+
+            return source_code[start_index:end_index]
+        else:
+            line = source_code.splitlines()[self.location.line-1]
+            return line[self.location.column-1:]
+
+
 
     def get_range_line_code(self):
         """
@@ -250,7 +328,13 @@ class Cursor:
         #
         # return code
 
-
+    def print_node(self):
+        print(f"{self.node.kind}")
+        print(f"{self.get_range_code()}")
+        print(f"display : {self.node.displayname}")
+        print(f"spelling : {self.node.spelling}")
+        print(f"{self.node.location}")
+        print(f"{self.node.extent}")
 
 
 

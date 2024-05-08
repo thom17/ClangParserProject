@@ -5,6 +5,8 @@ sys.path.append('../')
 import urllib.parse #파일경로는 인코딩되서 온다
 
 
+from clang.cindex import Cursor as clangCursor
+
 from clangParser.CUnit import CUnit
 from clangParser.Cursor import Cursor
 
@@ -47,6 +49,30 @@ def get_line(file_path:str, line_num:int):
     except Exception as e:
         logging.error(f"Error processing request: {e}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/call/<string:file_path>/<int:line_num>', methods=['GET'])
+def get_call(file_path:str, line_num:int):
+    try:
+        print("recv get call")
+        decoded_path = urllib.parse.unquote(file_path)
+        print(file_path, "->", decoded_path)
+        unit = CUnit.parse(decoded_path)
+        print("parse Done")
+        cursor: Cursor = Cursor(unit.get_method_body(line_num))
+        def_map: [clangCursor, clangCursor] = cursor.get_call_definition_map()
+
+        json_call_map = {}
+
+        for call_node in def_map:
+            def_cursor = Cursor(def_map[call_node])
+            json_call_map[def_cursor.get_src_name()] = def_cursor.to_dict()
+
+        # Return the line mappings as JSON
+        return jsonify(json_call_map)
+    except Exception as e:
+        logging.error(f"Error processing request: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 
 if __name__ == '__main__':
