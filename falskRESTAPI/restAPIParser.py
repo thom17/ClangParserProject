@@ -9,6 +9,7 @@ from clang.cindex import Cursor as clangCursor
 
 from clangParser.CUnit import CUnit
 from clangParser.Cursor import Cursor
+from clangParser.CursorOMS import CursorOMS
 
 app = Flask(__name__)
 
@@ -73,6 +74,28 @@ def get_call(file_path:str, line_num:int):
         logging.error(f"Error processing request: {e}")
         return jsonify({"error": str(e)}), 500
 
+
+
+@app.route('/oms/<string:file_path>', methods=['GET'])
+def get_oms(file_path:str):
+    try:
+        print("recv get oms")
+        decoded_path = urllib.parse.unquote(file_path)
+        print(file_path, "->", decoded_path)
+        unit = CUnit.parse(decoded_path)
+        print("parse Done")
+
+        json_oms_map = {}
+
+        for node in unit.this_file_nodes:
+            oms: CursorOMS = CursorOMS.GetCursorOMS(node)
+            json_oms_map[oms.get_src_name()] = oms.to_dict()
+
+        # Return the line mappings as JSON
+        return jsonify(json_oms_map)
+    except Exception as e:
+        logging.error(f"Error processing request: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':

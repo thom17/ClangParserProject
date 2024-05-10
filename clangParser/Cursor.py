@@ -4,12 +4,6 @@ from clang.cindex import TranslationUnit
 from clang.cindex import SourceRange
 from clang.cindex import CursorKind
 
-#안전하게 srcName을 뽑아낼 수 있는 타입
-safe_src_type = [CursorKind.CLASS_DECL, CursorKind.CXX_METHOD, CursorKind.FIELD_DECL, CursorKind.PARM_DECL, CursorKind.VAR_DECL, CursorKind.CONSTRUCTOR]
-
-
-cursor_map ={}
-
 class Cursor:
     """
     clang.cindex.Cursor 가 불편해서 정의
@@ -106,7 +100,7 @@ class Cursor:
             if stmt in target_stmt:
                 def_node = node.get_definition()
                 if def_node:
-                    new_cursor = Cursor(def_node, self.source_code)
+                    new_cursor = get_cursor(def_node)
                     dec_list.append(new_cursor)
             queue[:0] = node.get_children()
         return dec_list
@@ -129,7 +123,6 @@ class Cursor:
                     dec_dict[node] = def_node
             queue[:0] = node.get_children()
         return dec_dict
-
 
     def read_file(self) -> (str, int):
         """
@@ -165,7 +158,6 @@ class Cursor:
                 print(f"{file_path}  read Fail")
                 return ""
 
-
     def get_range_code(self):
         """
         Returns the source code for the specific range including column information.
@@ -185,8 +177,6 @@ class Cursor:
         else:
             line = source_code.splitlines()[self.location.line-1]
             return line[self.location.column-1:]
-
-
 
     def get_range_line_code(self):
         """
@@ -227,7 +217,7 @@ class Cursor:
             base_file_path = self.location.file.name
         while queue:
             node = queue.pop(0)
-            c = Cursor(node, self.source_code)
+            c = get_cursor(node)
             line: int = node.location.line
             if line not in line_map:
                 line_map[line] = []
@@ -242,7 +232,7 @@ class Cursor:
 
         while queue:
             node = queue.pop(0)
-            new_cursor = Cursor(node, self.source_code)
+            new_cursor = get_cursor(node)
             if file_name not in file_map:
                 file_map[file_name] = []
             file_map[file_name].append(new_cursor)
@@ -256,7 +246,7 @@ class Cursor:
 
         while queue:
             node = queue.pop(0)
-            c = Cursor(node, self.source_code)
+            c = get_cursor(node)
             type_name = node.kind.name
             if type_name not in stmt_map:
                 stmt_map[type_name] = []
@@ -270,7 +260,7 @@ class Cursor:
         while len(queue):
             node, lv = queue.pop(0)
             print(f"{lv}{node.spelling} ({node.kind} {node.location.line}:{node.location.column})")
-            c = Cursor(node)
+            c = get_cursor(node)
             print(c.get_range_code())
             # Update the level indicator for child nodes
             new_lv = lv + "* "
@@ -279,6 +269,16 @@ class Cursor:
             childs = [(child, new_lv) for child in node.get_children()]
             queue = childs + queue
 
+    def visit_nodes(self)->[clangCursor]:
+        visit_list: ['Cursor'] = []
+        queue = [self.node]
+
+        while queue:
+            node = queue.pop(0)
+            visit_list.append(node)
+            queue[:0] = node.get_children()
+        return visit_list
+
 
     def get_visit_unit_map(self) -> dict[TranslationUnit, list['Cursor']]:
         unit_map = {}
@@ -286,7 +286,7 @@ class Cursor:
 
         while queue:
             node = queue.pop(0)
-            c = Cursor(node, self.source_code)
+            c = get_cursor(node)
             unit = node.translation_unit
             if unit not in unit_map:
                 unit_map[unit] = []
@@ -328,14 +328,34 @@ class Cursor:
         #
         # return code
 
-    def print_node(self):
-        print(f"{self.node.kind}")
-        print(f"{self.get_range_code()}")
-        print(f"display : {self.node.displayname}")
-        print(f"spelling : {self.node.spelling}")
-        print(f"{self.node.location}")
-        print(f"{self.node.extent}")
+    def print_node(self, node = None):
+        if node:
+            print(f"{node.kind}")
+            #print(f"{self.get_range_code()}")
+            print(f"display : {node.displayname}")
+            print(f"spelling : {node.spelling}")
+            print(f"{node.location}")
+            print(f"{node.extent}")
+        else:
+            print(f"{self.node.kind}")
+            print(f"{self.get_range_code()}")
+            print(f"display : {self.node.displayname}")
+            print(f"spelling : {self.node.spelling}")
+            print(f"{self.node.location}")
+            print(f"{self.node.extent}")
 
+cursor_map ={}
+def get_cursor(cursor)->Cursor:
+    if isinstance(cursor, Cursor):
+        assert (cursor_map[cursor.node] == cursor), "cursor map 오류"
+        return cursor
+    else:
+        assert isinstance(cursor, clangCursor), f"타입 오류 {type(cursor)}"
+        if cursor in cursor_map:
+            return cursor_map[cursor]
+        else:
+            cursor_map[cursor] = Cursor(cursor)
+            return cursor_map[cursor]
 
 
 if __name__ == "__main__":
@@ -351,7 +371,7 @@ if __name__ == "__main__":
     elapsed_time = end_time - start_time
     print("Parsing time:", elapsed_time, "seconds")
 
-    mycursor = Cursor(compliationunit.cursor)
+    mycursor = get_cursor(compliationunit.cursor)
 
     start_time = time.time()
     line_map = mycursor.get_visit_line_map()
