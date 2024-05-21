@@ -1,3 +1,5 @@
+import os.path
+
 from clang.cindex import Cursor as clangCursor
 from clang.cindex import SourceLocation
 from clang.cindex import TranslationUnit
@@ -9,6 +11,9 @@ if __name__ == "__main__":
 else:
     from .Cursor import Cursor
     from .clangParser import parsing
+
+    # from Cursor import Cursor
+    # from clangParser import parsing
 
 class CUnit:
     """
@@ -22,7 +27,7 @@ class CUnit:
     def __init__(self, unit: TranslationUnit):
         self.unit = unit
         self.file_path = unit.spelling
-
+        self.file_name, self.file_extension = os.path.splitext(self.file_path)
         self.this_file_nodes: [clangCursor] = []
 
         cursor: clangCursor = unit.cursor

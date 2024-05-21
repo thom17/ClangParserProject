@@ -1,10 +1,20 @@
-void OnInitialUpdate(void)
+#include <iostream>
+int SetToothFixtureNumberList(int listToothFixtureNumber)
 {
-	__super::OnInitialUpdate();
+    std::vector<int> listUpper;
+	std::vector<int> listLower;
 
-	CRect rcClient;
-	GetClientRect(rcClient);
+	for (auto nTooth : listToothFixtureNumber)
+	{
+		if (31 > nTooth)
+		{
+			listUpper.push_back(nTooth);
+		}
+		else
+		{
+			listLower.push_back(nTooth);
+		}
+	}
 
-	// step에 맞는 화면 구성을 위해 호출
-	ResizeInternal(rcClient);
+    return 0;
 }
