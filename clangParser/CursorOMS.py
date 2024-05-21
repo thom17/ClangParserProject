@@ -51,6 +51,11 @@ class CursorOMS(Cursor):
         # for node in self.visit_nodes():
         #     if node.kind ==
         #         self.has_nodes.add(node)
+        self.has_nodes: [clangCursor] = []
+        def_map = self.get_visit_def_map()
+        for src_name in def_map:
+            self.has_nodes.append(def_map[src_name])
+
 
 
     def to_dict(self):

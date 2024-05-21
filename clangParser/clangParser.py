@@ -2,7 +2,31 @@ import clang.cindex
 import os
 import tempfile
 
+target_compile_command = r"D:\dev\AutoPlanning\trunk\AP-6979-TimeTask"
+
 clang.cindex.Config.set_library_file(r"C:\Program Files\LLVM\bin\libclang.dll")
+
+msvc_include_path = r'C:/dev/VS2019 Professional/IDE/VC/Tools/MSVC/14.29.30133/include'
+windows_sdk_include_paths = [
+    r'C:/Program Files (x86)/Windows Kits/8.1/Include/shared',
+    r'C:/Program Files (x86)/Windows Kits/8.1/Include/um',
+    r'C:/Program Files (x86)/Windows Kits/8.1/Include/winrt',
+    r'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include',
+
+    r'C:/dev/VS2019 Professional/IDE/VC/Tools/MSVC/14.29.30133/atlmfc/include',
+    r'C:/Program Files (x86)/Microsoft Visual Studio 2019/Community/VC/Tools/MSVC/14.29.30133/include',
+    r'C:/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt'
+]
+
+include_paths = [msvc_include_path] + windows_sdk_include_paths
+
+args = [
+           '-std=c++14',  # C++14 표준 사용
+           '-x', 'c++',  # 처리할 파일의 언어를 C++로 지정
+           # '-nostdinc++', #활성화 할경우 기본 경로 무시 처리
+           '-D_MSC_VER=1929',
+           '-D__MSVCRT__',
+       ] + [f'-I {path}' for path in include_paths]
 
 def parse_context(context: str, file_remove = True) -> clang.cindex.TranslationUnit:
     """
@@ -26,7 +50,14 @@ def parse_context(context: str, file_remove = True) -> clang.cindex.TranslationU
 def parsing(file_path: str):
     # Clang 라이브러리 파일 설정
     index = clang.cindex.Index.create()
-    return index.parse(file_path, args=['-std=c++14'])
+
+    # compile_commands.json 파일 위치 지정
+    clang.cindex.CompilationDatabase.fromDirectory(target_compile_command)
+
+    # 파일 파싱
+    translation_unit = index.parse(file_path, args=args)
+
+    return translation_unit
 
 
 def simple_visit(node: clang.cindex.Cursor, i=0):
@@ -48,6 +79,9 @@ def parse_project(directory):
     # clang.cindex.Config.set_library_file(r"C:\Program Files\LLVM\bin\libclang.dll")
     index = clang.cindex.Index.create()
 
+    # compile_commands.json 파일 위치 지정
+    clang.cindex.CompilationDatabase.fromDirectory(target_compile_command)
+
     # 프로젝트 디렉토리 내의 모든 C++ 파일을 찾음
     files = list(find_cpp_files(directory))
 
@@ -55,11 +89,7 @@ def parse_project(directory):
     translation_units = []
     for file in files:
         print(f"parse {file}")
-        tu = index.parse(file, args=[
-            '-x', 'c++', '-std=c++14',
-            '-I', 'path/to/include',  # 추가 인클루드 경로
-            '-D__CODE_GENERATOR__'   # 필요한 경우 매크로 정의
-        ])
+        tu = index.parse(file, args=args)
         translation_units.append(tu)
 
     return translation_units

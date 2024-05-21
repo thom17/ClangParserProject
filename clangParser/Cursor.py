@@ -3,6 +3,12 @@ from clang.cindex import SourceLocation
 from clang.cindex import TranslationUnit
 from clang.cindex import SourceRange
 from clang.cindex import CursorKind
+import cchardet as chardet
+import os
+
+
+from sympy.physics.units import force
+
 
 class Cursor:
     """
@@ -11,8 +17,8 @@ class Cursor:
 
     def __init__(self, node: clangCursor, source_code: str = None):
         assert isinstance(node, clangCursor), f"node{type(node)} must be an instance of clang.cindex.Cursor"
-
         self.node = node
+        self.is_def = node.is_definition()
         self.spelling = node.spelling
         self.location: SourceLocation = node.location
         self.extend: SourceRange = node.extent
@@ -65,6 +71,19 @@ class Cursor:
             'code': self.get_range_code()
         }
 
+    def get_visit_def_map(self, node=None) -> [str, clangCursor]:
+        visit_map:[str, 'clangCursor'] = {} #1:1 대응으로 바꿔도 문제없어야 함
+        if node is None:
+            node=self.node
+        queue = [node]
+        while queue:
+            node = queue.pop(0)
+            if node.is_definition():
+                visit_map[Cursor(node).get_src_name()] = node
+            queue.extend(node.get_children())
+        return visit_map
+
+
     def get_src_name(self, node=None):
         """
         그 srcName
@@ -73,6 +92,9 @@ class Cursor:
         :return:
         """
 
+        if self.node is None:
+            print("???")
+
         if node is None:
             node=self.node
 
@@ -80,10 +102,36 @@ class Cursor:
         #assert node.semantic_parent, f"{node.kind}은 srcName 출력 불가"
 
         #파일 자체의 매서드, 변수이거나 클래스 내부이거나
-        if node.kind == CursorKind.CLASS_DECL or node.kind == CursorKind.TRANSLATION_UNIT:
-            return node.spelling
-        else:
-            return self.get_src_name(node.semantic_parent) + "." + node.displayname #display가 sig로 나오는듯
+        # if node.kind == CursorKind.CLASS_DECL or node.kind == CursorKind.TRANSLATION_UNIT:
+
+        try:
+            #AST 직전까지
+            if not node.semantic_parent is None and node.semantic_parent.kind == CursorKind.TRANSLATION_UNIT:
+                return node.spelling
+            elif CursorKind.PARM_DECL in [child_node.kind for child_node in node.get_children()]:   #아마도 메서드 정의
+                return self.get_src_name(node.semantic_parent) + "." + self.get_method_sig()
+            else:
+                return self.get_src_name(node.semantic_parent) + "." + node.displayname #display가 sig로 나오는듯
+        except:
+            print()
+    def get_type_def_arg(self, node: clangCursor = None):
+        if node is None:
+            node = self.node
+
+        result = "("
+        for param_dec in node.get_arguments():
+            # Identifier 제거
+            result += ", " + Cursor(param_dec).get_range_code().replace(" " + param_dec.spelling, "")
+        result += ")"
+        return result.replace("(, ", "(")
+
+    def get_method_sig(self, node=None):
+        if node is None:
+            node = self.node
+
+        return node.spelling + self.get_type_def_arg(node)
+
+
 
     def get_call_definition(self, target_stmt= ["CALL_EXPR", "MEMBER_REF_EXPR", "DECL_REF_EXPR", "UNEXPOSED_EXPR"]):
         """
@@ -105,22 +153,20 @@ class Cursor:
             queue[:0] = node.get_children()
         return dec_list
 
-    def get_call_definition_map(self, target_stmt= ["CALL_EXPR", "MEMBER_REF_EXPR", "DECL_REF_EXPR", "UNEXPOSED_EXPR"])->dict[clangCursor, clangCursor]:
+    def get_call_definition_map(self)->dict[clangCursor, clangCursor]:
         """
         DFS로 target_stmt의 defintion node를 구한다.
         :param target_stmt:
         :return dec_dict: [call_node: clangCursor, def_node: clangCursor]
         """
-        dec_dict: ['Cursor' 'Cursor'] = {}
+        dec_dict: [clangCursor, clangCursor] = {}
         queue = [self.node]
 
         while queue:
             node = queue.pop(0)
-            stmt = node.kind.name
-            if stmt in target_stmt:
-                def_node = node.get_definition()
-                if def_node:
-                    dec_dict[node] = def_node
+            def_node = node.get_definition()
+            if def_node:
+                dec_dict[node] = def_node
             queue[:0] = node.get_children()
         return dec_dict
 
@@ -150,13 +196,20 @@ class Cursor:
                 file_path = self.translation_unit.spelling
             else:
                 assert True, "Read File Fail"
-                return ""
+                return "", mod
             try:
-                with open(file_path, 'r') as file:
-                    return (file.read(), mod)
+                #먼저 파일 인코딩 방식 탐지
+                with open(file_path, 'rb') as file:
+                    raw_data = file.read()
+                file_encode = chardet.detect(raw_data)['encoding']
+
+                #파일 읽기
+                with open(file_path, 'r', encoding=file_encode) as file:
+                    return file.read(), mod
+
             except:
                 print(f"{file_path}  read Fail")
-                return ""
+                return "", mod
 
     def get_range_code(self):
         """
@@ -188,7 +241,13 @@ class Cursor:
 
         assert start.file.name == end.file.name, "Start and end are in different files."
 
-        with open(start.file.name, 'r', encoding='utf-8') as file:
+        # 먼저 파일 인코딩 방식 탐지
+        with open(start.file.name, 'rb') as file:
+            raw_data = file.read()
+        file_encode = chardet.detect(raw_data)['encoding']
+
+        # 파일 읽기
+        with open(start.file.name, 'r', encoding=file_encode) as file:
             lines = file.readlines()
 
             # Lines are 0-based in Python, adjust by -1 since Clang lines are 1-based
@@ -238,7 +297,6 @@ class Cursor:
             file_map[file_name].append(new_cursor)
             queue.extend(node.get_children())
         return file_map
-
 
     def get_visit_stmt_map(self) ->dict[str, list]:
         stmt_map = {}
@@ -294,6 +352,26 @@ class Cursor:
             queue.extend(node.get_children())
         return unit_map
 
+    def get_simple_file_name(self, node=None):
+        if node is None:
+            node=self
+
+        if isinstance(node, Cursor) or isinstance(node, clangCursor):
+            path = node.location.file.name
+
+        # 경로를 표준화합니다.
+        normalized_path = os.path.normpath(path)
+
+        # 경로를 구성하는 파트들을 리스트로 분리합니다.
+        parts = normalized_path.split(os.sep)
+
+        # 마지막 파일 이름과 그 바로 상위 디렉토리만 포함하도록 조정합니다.
+        if len(parts) > 1:
+            result_path = os.path.join(parts[-2], parts[-1])
+        else:
+            result_path = parts[-1]  # 파일 또는 폴더만 있는 경우
+
+        return result_path
 
     def make_comment_code(self, code: str = None):
         """
