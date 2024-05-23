@@ -1,3 +1,4 @@
+import clang.cindex
 from clang.cindex import Cursor as clangCursor
 from clang.cindex import SourceLocation
 from clang.cindex import TranslationUnit
@@ -268,6 +269,30 @@ class Cursor:
             current_line += 1
 
         return offset  # If line/column are out of bounds, this will be the end of the source code
+
+
+    def get_visit_line_token_map(self, node = None)->dict[int, [clang.cindex.Token]]:
+        line_map = {}
+        if node is None:
+            node=self.node
+        for token in node.get_tokens():
+            line: int = token.location.line
+            if line not in line_map:
+                line_map[line] = []
+            line_map[line].append(token)
+        return line_map
+
+    def get_visit_kind_token_map(self, node = None)->dict[str, [clang.cindex.Token]]:
+        kind_map = {}
+        if node is None:
+            node=self.node
+        for token in node.get_tokens():
+            kind = token.kind
+            if kind not in kind_map:
+                kind_map[kind] = []
+            kind_map[kind].append(token)
+        return kind_map
+
 
     def get_visit_line_map(self)->dict[int, list]:
         line_map = {}
