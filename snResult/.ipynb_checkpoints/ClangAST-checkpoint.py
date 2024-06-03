@@ -16,7 +16,7 @@ class TClangAST(Base):
 
 if __name__ == "__main__":
     # 데이터베이스 엔진 생성 (예: SQLite 메모리 데이터베이스)
-    engine = create_engine('sqlite:///dataSet.db')
+    engine = create_engine('sqlite:///dataset.db')
     Base.metadata.create_all(engine)
 
     # 세션 생성
@@ -31,7 +31,7 @@ if __name__ == "__main__":
         # print(ast.srcSig, ast.astStr)
 
 
-def get_all_table(path: str = 'dataSet.db') -> [TClangAST]:
+def get_all_table(path: str = 'dataset.db') -> [TClangAST]:
     engine = create_engine('sqlite:///'+path)
     Base.metadata.create_all(engine)
 

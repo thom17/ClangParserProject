@@ -59,6 +59,22 @@ def parsing(file_path: str):
 
     return translation_unit
 
+def parsing_files(file_list: [str]):
+    # Clang 라이브러리 파일 설정
+    index = clang.cindex.Index.create()
+
+    # compile_commands.json 파일 위치 지정
+    clang.cindex.CompilationDatabase.fromDirectory(target_compile_command)
+
+    # 파일 파싱
+    unit_list = []
+    for file_path in file_list:
+        translation_unit = index.parse(file_path, args=args)
+        unit_list.append(translation_unit)
+
+    return unit_list
+
+
 
 def simple_visit(node: clang.cindex.Cursor, i=0):
     in_tab = '\t' * i

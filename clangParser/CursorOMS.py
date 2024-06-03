@@ -55,8 +55,16 @@ class CursorOMS(Cursor):
         def_map = self.get_visit_def_map()
         for src_name in def_map:
             self.has_nodes.append(def_map[src_name])
-
-
+            
+    def to_clangCursor(self, cursor=None):
+        if cursor is None:
+            return self.node
+        elif isinstance(cursor, Cursor):
+            return cursor.node
+        else:
+            assert isinstance(cursor, clangCursor), f"Cursor 관련 클래스가 입력으로 들어오지 않음 {type(cursor)}"
+            return cursor
+    
 
     def to_dict(self):
         result = {}

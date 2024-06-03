@@ -107,7 +107,10 @@ class Cursor:
 
         try:
             #AST 직전까지
-            if not node.semantic_parent is None and node.semantic_parent.kind == CursorKind.TRANSLATION_UNIT:
+            if  node == node.semantic_parent:
+                print(f"get_src_name :  {node.kind.name} {node.spelling}")
+                return node.spelling
+            elif not node.semantic_parent is None and node.semantic_parent.kind == CursorKind.TRANSLATION_UNIT:
                 return node.spelling
             elif CursorKind.PARM_DECL in [child_node.kind for child_node in node.get_children()]:   #아마도 메서드 정의
                 return self.get_src_name(node.semantic_parent) + "." + self.get_method_sig()
@@ -121,6 +124,9 @@ class Cursor:
 
         result = "("
         for param_dec in node.get_arguments():
+            type_node: clang.cindex.Type = param_dec.type
+            print(len(list(param_dec.get_children())))
+
             # Identifier 제거
             result += ", " + Cursor(param_dec).get_range_code().replace(" " + param_dec.spelling, "")
         result += ")"

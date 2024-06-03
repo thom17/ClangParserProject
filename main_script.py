@@ -4,7 +4,7 @@ from clangParser.Cursor import Cursor
 import clangParser.clangParser as Parser
 
 def print_all():
-    dbPath = 'snResult/dataSet.db'
+    dbPath = 'snResult/dataset.db'
     snResult: [TClangAST] = get_all_table(dbPath)
     for ast_set in snResult:
         print(ast_set.srcSig)
