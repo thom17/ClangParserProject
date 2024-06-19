@@ -7,10 +7,10 @@ from clang.cindex import SourceRange
 
 if __name__ == "__main__":
     from Cursor import Cursor
-    from clangParser import parsing
+    from clangParser import parsing, parse_project
 else:
     from .Cursor import Cursor
-    from .clangParser import parsing
+    from .clangParser import parsing, parse_project
 
     # from Cursor import Cursor
     # from clangParser import parsing
@@ -49,6 +49,13 @@ class CUnit:
     def parse(file_path)-> 'CUnit':
         compliationunit = parsing(file_path)
         return CUnit(compliationunit)
+
+    @staticmethod
+    def parse_project(file_path)-> 'CUnit':
+        my_units = []
+        for tunit in parse_project(file_path):
+            my_units.append(CUnit(tunit))
+        return my_units
 
     def get_method_body(self, line_num: int) -> clangCursor:
         assert(isinstance(line_num, int))

@@ -1,8 +1,6 @@
 from typing import Dict, List
-from dataclasses import dataclass
-
+from collections import defaultdict
 class InfoSet:
-
     def __init__(self):
         self.classInfos: Dict[str, 'ClassInfo'] = {}
         self.functionInfos: Dict[str, 'FunctionInfo'] = {}
@@ -48,7 +46,59 @@ class InfoSet:
         elif new_info.__class__.__name__ == 'VarInfo':
             return self.__put_var_info(new_info)
 
+    def get_info(self, src_name):
+        infos = []
+        if src_name in self.classInfos:
+            infos.append(self.classInfos.get(src_name))
+        if src_name in self.functionInfos:
+            infos.append(self.functionInfos.get(src_name))
+        if src_name in self.varInfos:
+            infos.append(self.varInfos.get(src_name))
 
-    # def putInfo(self, new_info:Info):
-    #     if isinstance(new_info, 'ClassInfo'):
-    #         if new_info classInfos
+        if len(infos) == 0:
+            return None
+        elif len(infos) == 1:
+            return infos[0]
+        else:
+            assert False, "srcName 충돌"
+            # return infos
+
+    def search_info(self, search_key):
+        infos = []
+        for src_name in self.classInfos:
+            if search_key in src_name:
+                infos.append(self.classInfos.get(src_name))
+
+        for src_name in self.functionInfos:
+            if search_key in src_name:
+                infos.append(self.functionInfos.get(src_name))
+
+        for src_name in self.varInfos:
+            if search_key in src_name:
+                infos.append(self.varInfos.get(src_name))
+
+
+        return infos
+
+    def get_src_map(self):
+        """
+        Class, Method, Var을 하나의 리스트로
+        src_map을 생성
+        :return:
+        """
+
+        info_map:[str, ['InfoBase']] = defaultdict(list)
+        for src_name in self.classInfos:
+            assert len(info_map[src_name]) == 0, "src_name 충돌"
+            info_map[src_name].append(self.classInfos[src_name])
+
+        for src_name in self.functionInfos:
+            assert len(info_map[src_name]) == 0, "src_name 충돌"
+            info_map[src_name].append(self.functionInfos[src_name])
+
+        for src_name in self.varInfos:
+            assert len(info_map[src_name]) == 0, "src_name 충돌"
+            info_map[src_name].append(self.varInfos[src_name])
+
+        return info_map
+

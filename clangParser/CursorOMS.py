@@ -43,7 +43,7 @@ class CursorOMS(Cursor):
 
         #print(dec_list.__len__())
         dec_set = set(dec_list)
-        print(dec_set.__len__())
+        # print(dec_set.__len__())
 
         self.call_nodes = dec_set
         #has는 나중에 Cursor 측에서 vist_node 추가하자. (def 관련 필터링해서)

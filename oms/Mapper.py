@@ -26,6 +26,17 @@ var_kind_list=[
 kind_list = class_kind_list + method_kind_list + var_kind_list
 
 base_info_set = InfoSet()
+src_map:[str, ] = {}
+
+
+def is_target_node(node: Cursor):
+    if node is None:
+        return False
+    elif node.is_definition() and node.get_definition() == node and not node.kind.name == 'CXX_ACCESS_SPEC_DECL':
+        return True
+    elif node.kind.name in kind_list:
+        return True
+
 
 
 def make_core_info(mycursor: MyCursor):
@@ -50,142 +61,163 @@ def make_core_info(mycursor: MyCursor):
              code=code, comment="", type_str="")
 
 
-def new_class_info(mycursor: MyCursor):
-    cls_info = ClassInfo(make_core_info(mycursor))
-    in_defs = find_has_infos(mycursor.node)
-    for info in in_defs:
-        cls_info.relationInfo.hasInfoMap.put_info(info)
+def new_class_info(mycursor: MyCursor, base_info_set):
+    owner_oms = Cursor2OMS(mycursor.node.semantic_parent, base_info_set)
+    cls_info = ClassInfo(make_core_info(mycursor), owner_oms)
+    # in_defs = find_has_infos(mycursor.node)
+    # for info in in_defs:
+    #     cls_info.relationInfo.hasInfoMap.put_info(info)
+
+    src_map[cls_info.src_name] = mycursor
 
     return cls_info
 
 
-def is_target_node(node: Cursor):
-    return node.is_definition() or node.kind.name in kind_list
 
-def new_var_info(mycursor: MyCursor):
+def new_var_info(mycursor: MyCursor, base_info_set):
+    owner_oms = Cursor2OMS(mycursor.node.semantic_parent, base_info_set)
     core_info = make_core_info(mycursor)
     core_info.type_str = mycursor.node.type.spelling
-    return VarInfo(core_info)
+
+    var_info = VarInfo(core_info, owner_oms)
+    src_map[var_info.src_name] = mycursor
+    return var_info
 
 
-def new_fun_info(mycursor: MyCursor):
+def new_fun_info(mycursor: MyCursor, base_info_set):
+    owner_oms = Cursor2OMS(mycursor.node.semantic_parent, base_info_set)
     core_info = make_core_info(mycursor)
     core_info.type_str = mycursor.node.result_type.spelling
-    method_info = FunctionInfo(core_info)
+    method_info = FunctionInfo(core_info, owner_oms)
+
+    src_map[method_info.src_name] = mycursor
     return method_info
 
-def cursor2cls_info(cursor: Cursor):
+def cursor2cls_info(cursor: Cursor, base_info_set):
     mycursor = MyCursor(cursor)
     src_name = mycursor.get_src_name()
     cls_info = base_info_set.get_class_info(src_name)
     if cls_info is None:
-        cls_info = new_class_info(mycursor)
+        cls_info = new_class_info(mycursor, base_info_set)
         base_info_set.put_info(cls_info)
     return cls_info
 
-def cursor2var_info(cursor: Cursor):
+def cursor2var_info(cursor: Cursor, base_info_set):
     mycursor = MyCursor(cursor)
     src_name = mycursor.get_src_name()
     var_info = base_info_set.get_var_info(src_name)
     if var_info is None:
-        var_info = new_var_info(mycursor)
+        var_info = new_var_info(mycursor, base_info_set)
         base_info_set.put_info(var_info)
     return var_info
 
 
-def cursor2fun_info(cursor: Cursor):
+def cursor2fun_info(cursor: Cursor, base_info_set):
     mycursor = MyCursor(cursor)
     src_name = mycursor.get_src_name()
     method_info = base_info_set.get_function_info(src_name)
     if method_info is None:
-        method_info = new_fun_info(mycursor)
+        method_info = new_fun_info(mycursor, base_info_set)
         base_info_set.put_info(method_info)
     return method_info
 
-def find_has_infos(cursor: Cursor):
-    """
-    하나의 커서 내의 dec 노드들 찾기.
-    h와 cpp 두개가 발생할수도 있는대... src_name 기준이니 중복안되겠지??
-    아마도??
-    :param cursor:
-    :return:
-    """
-    info_list: [InfoBase] =[]
+def update_call(my_cursor: MyCursor, oms_data: InfoBase, oms_set: InfoSet):
+    call_definitions_list = my_cursor.get_call_definition()
+    for node in call_definitions_list:
+        call_data = Cursor2OMS(node, oms_set)
+        if call_data:
+            oms_data.relationInfo.add_callInfo(call_data)
+            owner_data = oms_data.owner
+            if owner_data:
+                oms_data.relationInfo.add_callInfo(call_data)
 
-    for node in cursor.get_children():
-        node:Cursor = node
-        if is_target_node(node):
-            info = Cursor2OMS(node)
-            info_list.append(info)
-        # else:
-        #     print(node.kind,"\t",MyCursor(node).get_range_code())
-    return info_list
 
-def Cursor2OMS(cursor: Cursor):
+def Cursor2OMS(cursor: Cursor, base_info_set):
     """
     Cursor 2 OMS
     없으면 OMS 생성
     :param cursor:
     :return:
     """
+    if isinstance(cursor, MyCursor):
+        cursor = cursor.node
+
+    cursor = cursor.get_definition()
     if is_target_node(cursor):
         kind: str = cursor.kind.name
         if kind in class_kind_list:
-            return cursor2cls_info(cursor)
+            return cursor2cls_info(cursor, base_info_set)
         elif kind in method_kind_list:
-            return cursor2fun_info(cursor)
+            return cursor2fun_info(cursor, base_info_set)
         elif kind in var_kind_list:
-            return cursor2var_info(cursor)
+            return cursor2var_info(cursor, base_info_set)
+    else:
+        return None
+
+def parsing(cursor_list: [Cursor]):
+    """
+    Cursor 2 OMS
+    없으면 OMS 생성
+    :param cursor:
+    :return:
+    """
+    all_data_set = InfoSet()
+
+    for cursor in cursor_list:
+        data = Cursor2OMS(cursor, all_data_set)
+
+    sorted_key = sorted(all_data_set.functionInfos)
+    for fun_src_name in sorted_key:
+        mycursor = src_map[fun_src_name]
+        method_info = all_data_set.functionInfos[fun_src_name]
+        update_call(mycursor, method_info, all_data_set)
+
+    return all_data_set
+
+
+
+
+
+
 
 if __name__ == "__main__":
     from clangParser.CUnit import CUnit
     header_info_set = {}
-#     unit=CUnit.parse(r"D:\dev\EcoCad\trunk\SimpleTask\mod_SCCrownDesign\CommandCrownDesignContact.h")
-#
+    unit=CUnit.parse(r"D:\dev\EcoCad\trunk\SimpleTask\mod_SCCrownDesign\CommandCrownDesignContact.cpp")
+    result=parsing(unit.this_file_nodes)
+
+    print("doen")
+
+    print(f"""
+{len(result.classInfos)} cls
+{len(result.functionInfos)} methods
+{len(result.varInfos)} vars
+          """)
+
+    cpp_info_set = {}
+
+    unit = CUnit.parse(r"D:\dev\EcoCad\trunk\SimpleTask\mod_SCCrownDesign\CommandCrownDesignContact.h")
+
 #     for node in unit.this_file_nodes:
-#         info = Cursor2OMS(node)
+#         info = Cursor2OMS(node, base_info_set)
 #         if info:
-#             header_info_set[info.src_name]=info
+#             if info.src_name not in header_info_set:
+#                 cpp_info_set[info.src_name] = info
 #             # print(info.src_name)
 #
 #         for child_node in node.get_children():
-#             info = Cursor2OMS(child_node)
+#             info = Cursor2OMS(child_node, base_info_set)
 #             if info:
-#             #     print("\t",info.src_name)
-#                 header_info_set[info.src_name] = info
-#
-#     print("doen")
+#                 # print("\t", info.src_name)
+#                 if info.src_name not in header_info_set:
+#                     cpp_info_set[info.src_name] = info
 #
 #     print(f"""
 # {len(base_info_set.classInfos)} cls
 # {len(base_info_set.functionInfos)} methods
 # {len(base_info_set.varInfos)} vars
 #           """)
-
-    cpp_info_set = {}
-
-    unit = CUnit.parse(r"D:\dev\EcoCad\trunk\SimpleTask\mod_SCCrownDesign\CommandCrownDesignContact.h")
-
-    for node in unit.this_file_nodes:
-        info = Cursor2OMS(node)
-        if info:
-            if info.src_name not in header_info_set:
-                cpp_info_set[info.src_name] = info
-            # print(info.src_name)
-
-        for child_node in node.get_children():
-            info = Cursor2OMS(child_node)
-            if info:
-                # print("\t", info.src_name)
-                if info.src_name not in header_info_set:
-                    cpp_info_set[info.src_name] = info
-
-    print(f"""
-{len(base_info_set.classInfos)} cls
-{len(base_info_set.functionInfos)} methods
-{len(base_info_set.varInfos)} vars          
-          """)
-
-    for src_name in cpp_info_set:
-        print(src_name, "\t\t", type(cpp_info_set[src_name]))
+#
+#     for src_name in cpp_info_set:
+#         print(src_name, "\t\t", type(cpp_info_set[src_name]))
     print()

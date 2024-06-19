@@ -113,7 +113,7 @@ class Cursor:
             elif not node.semantic_parent is None and node.semantic_parent.kind == CursorKind.TRANSLATION_UNIT:
                 return node.spelling
             elif CursorKind.PARM_DECL in [child_node.kind for child_node in node.get_children()]:   #아마도 메서드 정의
-                return self.get_src_name(node.semantic_parent) + "." + self.get_method_sig()
+                return self.get_src_name(node.semantic_parent) + "." + self.get_method_sig(node)
             else:
                 return self.get_src_name(node.semantic_parent) + "." + node.displayname #display가 sig로 나오는듯
         except:
@@ -125,7 +125,7 @@ class Cursor:
         result = "("
         for param_dec in node.get_arguments():
             type_node: clang.cindex.Type = param_dec.type
-            print(len(list(param_dec.get_children())))
+            # print(len(list(param_dec.get_children())))
 
             # Identifier 제거
             result += ", " + Cursor(param_dec).get_range_code().replace(" " + param_dec.spelling, "")
@@ -140,7 +140,7 @@ class Cursor:
 
 
 
-    def get_call_definition(self, target_stmt= ["CALL_EXPR", "MEMBER_REF_EXPR", "DECL_REF_EXPR", "UNEXPOSED_EXPR"]):
+    def get_call_definition(self, target_stmt= None):
         """
         DFS로 target_stmt의 defintion node를 구한다.
         :param target_stmt:
@@ -149,10 +149,15 @@ class Cursor:
         dec_list: ['Cursor'] = []
         queue = [self.node]
 
+
+
         while queue:
             node = queue.pop(0)
-            stmt = node.kind.name
-            if stmt in target_stmt:
+            kind = node.kind
+            if target_stmt is None:
+                target_stmt = node.kind.get_all_kinds()
+
+            if kind in target_stmt:
                 def_node = node.get_definition()
                 if def_node:
                     new_cursor = get_cursor(def_node)

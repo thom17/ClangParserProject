@@ -29,13 +29,20 @@ class RelationInfo:
         self.infoMap["callBy"] = self.callByInfoMap
         self.infoMap["has"] = self.hasInfoMap
 
+    def add_callInfo(self, info:'InfoBase'):
 
+        self.callInfoMap.put_info(info)
+        info.relationInfo.callByInfoMap.put_info(self)
+
+    def add_callByInfo(self, info: 'InfoBase'):
+        self.callByInfoMap.put_info(info)
+        info.relationInfo.callInfoMap.put_info(self)
 
 class InfoBase(CoreInfoData, ABC):
     typeInfo: 'ClassInfo'
     relationInfo: RelationInfo
 
-    def __init__(self, core_info: CoreInfoData):
+    def __init__(self, core_info: CoreInfoData, owner: 'InfoBase'= None):
         super().__init__(
             name=core_info.name,
             src_name=core_info.src_name,
@@ -50,3 +57,7 @@ class InfoBase(CoreInfoData, ABC):
 
         self.typeInfo = None
         self.relationInfo = RelationInfo()
+        self.owner = self
+        if owner:
+            self.owner = owner
+            owner.relationInfo.hasInfoMap.put_info(self)
