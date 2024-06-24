@@ -102,7 +102,7 @@ def cursor2cls_info(cursor: Cursor, base_info_set):
         base_info_set.put_info(cls_info)
     return cls_info
 
-def cursor2var_info(cursor: Cursor, base_info_set):
+def __cursor2var_info(cursor: Cursor, base_info_set):
     mycursor = MyCursor(cursor)
     src_name = mycursor.get_src_name()
     var_info = base_info_set.get_var_info(src_name)
@@ -112,7 +112,7 @@ def cursor2var_info(cursor: Cursor, base_info_set):
     return var_info
 
 
-def cursor2fun_info(cursor: Cursor, base_info_set):
+def __cursor2fun_info(cursor: Cursor, base_info_set):
     mycursor = MyCursor(cursor)
     src_name = mycursor.get_src_name()
     method_info = base_info_set.get_function_info(src_name)
@@ -122,14 +122,19 @@ def cursor2fun_info(cursor: Cursor, base_info_set):
     return method_info
 
 def update_call(my_cursor: MyCursor, oms_data: InfoBase, oms_set: InfoSet):
-    call_definitions_list = my_cursor.get_call_definition()
-    for node in call_definitions_list:
-        call_data = Cursor2OMS(node, oms_set)
-        if call_data:
-            oms_data.relationInfo.add_callInfo(call_data)
-            owner_data = oms_data.owner
-            if owner_data:
-                oms_data.relationInfo.add_callInfo(call_data)
+    visit_line_map = my_cursor.get_visit_line_map()
+
+    for line in visit_line_map:
+        for cursor in visit_line_map[line]:
+            def_node = cursor.node.get_definition()
+            if def_node is None:
+                def_node = cursor.node.referenced
+                call_data = Cursor2OMS(def_node, oms_set)
+                if call_data:
+                    oms_data.relationInfo.add_callInfo(call_data)
+                    owner_data = oms_data.owner
+                    if owner_data:
+                        oms_data.relationInfo.add_callInfo(call_data)
 
 
 def Cursor2OMS(cursor: Cursor, base_info_set):
@@ -139,8 +144,15 @@ def Cursor2OMS(cursor: Cursor, base_info_set):
     :param cursor:
     :return:
     """
+    if cursor is None:
+        return None
+
     if isinstance(cursor, MyCursor):
         cursor = cursor.node
+
+    oms_info = base_info_set.get_info(MyCursor(cursor).get_src_name())
+    if oms_info:
+        return oms_info
 
     cursor = cursor.get_definition()
     if is_target_node(cursor):
@@ -148,9 +160,9 @@ def Cursor2OMS(cursor: Cursor, base_info_set):
         if kind in class_kind_list:
             return cursor2cls_info(cursor, base_info_set)
         elif kind in method_kind_list:
-            return cursor2fun_info(cursor, base_info_set)
+            return __cursor2fun_info(cursor, base_info_set)
         elif kind in var_kind_list:
-            return cursor2var_info(cursor, base_info_set)
+            return __cursor2var_info(cursor, base_info_set)
     else:
         return None
 
@@ -183,7 +195,7 @@ def parsing(cursor_list: [Cursor]):
 if __name__ == "__main__":
     from clangParser.CUnit import CUnit
     header_info_set = {}
-    unit=CUnit.parse(r"D:\dev\EcoCad\trunk\SimpleTask\mod_SCCrownDesign\CommandCrownDesignContact.cpp")
+    unit=CUnit.parse(r"D:\dev\AutoPlanning\trunk\AP_Task\mod_APImplantSimulation\ActuatorHybridFixture.cpp")
     result=parsing(unit.this_file_nodes)
 
     print("doen")

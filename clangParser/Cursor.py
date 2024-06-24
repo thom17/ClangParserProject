@@ -117,7 +117,8 @@ class Cursor:
             else:
                 return self.get_src_name(node.semantic_parent) + "." + node.displayname #display가 sig로 나오는듯
         except:
-            print()
+            print(f"get src except : {node.spelling} {node.kind.name} {node.location}")
+
     def get_type_def_arg(self, node: clangCursor = None):
         if node is None:
             node = self.node
@@ -139,13 +140,13 @@ class Cursor:
         return node.spelling + self.get_type_def_arg(node)
 
 
-
     def get_call_definition(self, target_stmt= None):
         """
         DFS로 target_stmt의 defintion node를 구한다.
         :param target_stmt:
         :return:
         """
+        dec_list: ['Cursor'] = []
         dec_list: ['Cursor'] = []
         queue = [self.node]
 
