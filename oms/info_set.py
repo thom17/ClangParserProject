@@ -60,7 +60,7 @@ class InfoSet:
         elif len(infos) == 1:
             return infos[0]
         else:
-            assert False, "srcName 충돌"
+            assert False, f"srcName 충돌 {src_name}"
             # return infos
 
     def search_info(self, search_key):

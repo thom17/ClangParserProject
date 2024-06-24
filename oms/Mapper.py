@@ -29,6 +29,8 @@ base_info_set = InfoSet()
 src_map:[str, ] = {}
 
 
+
+
 def is_target_node(node: Cursor):
     if node is None:
         return False
@@ -154,7 +156,8 @@ def Cursor2OMS(cursor: Cursor, base_info_set):
     if oms_info:
         return oms_info
 
-    cursor = cursor.get_definition()
+    #srcName을 토큰을 통해 정의해서 문제가 안될듯? 추가적으로 기존 데이터에 업데이트는 필요할수있음
+    # cursor = cursor.get_definition()
     if is_target_node(cursor):
         kind: str = cursor.kind.name
         if kind in class_kind_list:

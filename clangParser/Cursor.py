@@ -4,8 +4,12 @@ from clang.cindex import SourceLocation
 from clang.cindex import TranslationUnit
 from clang.cindex import SourceRange
 from clang.cindex import CursorKind
+
+import clangParser.clang_utill as ClangUtil
+
 import cchardet as chardet
 import os
+
 
 
 from sympy.physics.units import force
@@ -85,6 +89,8 @@ class Cursor:
         return visit_map
 
 
+
+
     def get_src_name(self, node=None):
         """
         그 srcName
@@ -93,51 +99,14 @@ class Cursor:
         :return:
         """
 
-        if self.node is None:
-            print("???")
-
-        if node is None:
-            node=self.node
-
-        #assert node.type in safe_src_type, f"{node.type}은 srcName 출력 불가"
-        #assert node.semantic_parent, f"{node.kind}은 srcName 출력 불가"
-
-        #파일 자체의 매서드, 변수이거나 클래스 내부이거나
-        # if node.kind == CursorKind.CLASS_DECL or node.kind == CursorKind.TRANSLATION_UNIT:
-
-        try:
-            #AST 직전까지
-            if  node == node.semantic_parent:
-                print(f"get_src_name :  {node.kind.name} {node.spelling}")
-                return node.spelling
-            elif not node.semantic_parent is None and node.semantic_parent.kind == CursorKind.TRANSLATION_UNIT:
-                return node.spelling
-            elif CursorKind.PARM_DECL in [child_node.kind for child_node in node.get_children()]:   #아마도 메서드 정의
-                return self.get_src_name(node.semantic_parent) + "." + self.get_method_sig(node)
-            else:
-                return self.get_src_name(node.semantic_parent) + "." + node.displayname #display가 sig로 나오는듯
-        except:
-            print(f"get src except : {node.spelling} {node.kind.name} {node.location}")
-
-    def get_type_def_arg(self, node: clangCursor = None):
         if node is None:
             node = self.node
 
-        result = "("
-        for param_dec in node.get_arguments():
-            type_node: clang.cindex.Type = param_dec.type
-            # print(len(list(param_dec.get_children())))
+        assert node, "Node is null"
 
-            # Identifier 제거
-            result += ", " + Cursor(param_dec).get_range_code().replace(" " + param_dec.spelling, "")
-        result += ")"
-        return result.replace("(, ", "(")
+        return ClangUtil.get_src_name(node)
 
-    def get_method_sig(self, node=None):
-        if node is None:
-            node = self.node
 
-        return node.spelling + self.get_type_def_arg(node)
 
 
     def get_call_definition(self, target_stmt= None):
