@@ -129,14 +129,18 @@ def update_call(my_cursor: MyCursor, oms_data: InfoBase, oms_set: InfoSet):
     for line in visit_line_map:
         for cursor in visit_line_map[line]:
             def_node = cursor.node.get_definition()
+
             if def_node is None:
                 def_node = cursor.node.referenced
                 call_data = Cursor2OMS(def_node, oms_set)
-                if call_data:
+            else:
+                call_data = Cursor2OMS(def_node, oms_set)
+
+            if call_data:
+                oms_data.relationInfo.add_callInfo(call_data)
+                owner_data = oms_data.owner
+                if owner_data:
                     oms_data.relationInfo.add_callInfo(call_data)
-                    owner_data = oms_data.owner
-                    if owner_data:
-                        oms_data.relationInfo.add_callInfo(call_data)
 
 
 def Cursor2OMS(cursor: Cursor, base_info_set):
@@ -152,7 +156,8 @@ def Cursor2OMS(cursor: Cursor, base_info_set):
     if isinstance(cursor, MyCursor):
         cursor = cursor.node
 
-    oms_info = base_info_set.get_info(MyCursor(cursor).get_src_name())
+    src_name = MyCursor(cursor).get_src_name()
+    oms_info = base_info_set.get_info(src_name)
     if oms_info:
         return oms_info
 
@@ -169,12 +174,12 @@ def Cursor2OMS(cursor: Cursor, base_info_set):
     else:
         return None
 
-def parsing(cursor_list: [Cursor]):
+def parsing(cursor_list: [Cursor]) -> InfoSet:
     """
     Cursor 2 OMS
     없으면 OMS 생성
-    :param cursor:
-    :return:
+    :param [cursor]:
+    :return InfoSet:
     """
     all_data_set = InfoSet()
 
@@ -209,9 +214,20 @@ if __name__ == "__main__":
 {len(result.varInfos)} vars
           """)
 
+    for src in result.classInfos:
+        cls_info: ClassInfo = result.classInfos[src]
+        core_dict = cls_info.to_dict()
+        # print(core_dict)
+
     cpp_info_set = {}
 
-    unit = CUnit.parse(r"D:\dev\EcoCad\trunk\SimpleTask\mod_SCCrownDesign\CommandCrownDesignContact.h")
+    from neo4j_handler import Neo4jHandler
+
+    neo4j_handler = Neo4jHandler("bolt://localhost:7687", "neo4j", "123456789")
+    neo4j_handler.delete_all_nodes()
+    neo4j_handler.make_db(result)
+
+    # unit = CUnit.parse(r"D:\dev\EcoCad\trunk\SimpleTask\mod_SCCrownDesign\CommandCrownDesignContact.h")
 
 #     for node in unit.this_file_nodes:
 #         info = Cursor2OMS(node, base_info_set)

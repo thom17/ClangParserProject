@@ -1,5 +1,6 @@
 from dataclasses import dataclass, replace
 from oms.info_set import InfoSet
+from dataclasses import asdict
 
 from abc import ABC
 @dataclass
@@ -54,10 +55,14 @@ class InfoBase(CoreInfoData, ABC):
             code=core_info.code,
             type_str=core_info.type_str
         )
-
+        self.core_info = core_info
         self.typeInfo = None
         self.relationInfo = RelationInfo()
         self.owner = self
         if owner:
             self.owner = owner
             owner.relationInfo.hasInfoMap.put_info(self)
+
+    def to_dict(self):
+        core_info_dict = asdict(self.core_info)
+        return core_info_dict
