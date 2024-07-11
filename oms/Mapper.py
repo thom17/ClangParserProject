@@ -140,8 +140,7 @@ def update_call(my_cursor: MyCursor, oms_data: InfoBase, oms_set: InfoSet):
                 oms_data.relationInfo.add_callInfo(call_data)
                 owner_data = oms_data.owner
                 if owner_data:
-                    oms_data.relationInfo.add_callInfo(call_data)
-
+                    owner_data.relationInfo.add_callInfo(call_data)
 
 def Cursor2OMS(cursor: Cursor, base_info_set):
     """
