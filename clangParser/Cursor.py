@@ -430,16 +430,23 @@ class Cursor:
 
 cursor_map ={}
 def get_cursor(cursor)->Cursor:
+    """
+    원래는 ClangCursor : MyCursor로 대응시키려고 만든 메서드였다.
+    먼가 버전 이슈로 key로 사용할 수 없고 OMS로 확장하기도 해서 1:1 대응하지 않기로
+    :param cursor:
+    :return:
+    """
     if isinstance(cursor, Cursor):
         assert (cursor_map[cursor.node] == cursor), "cursor map 오류"
         return cursor
     else:
-        assert isinstance(cursor, clangCursor), f"타입 오류 {type(cursor)}"
-        if cursor in cursor_map:
-            return cursor_map[cursor]
-        else:
-            cursor_map[cursor] = Cursor(cursor)
-            return cursor_map[cursor]
+        return Cursor(cursor)
+        # assert isinstance(cursor, clangCursor), f"타입 오류 {type(cursor)}"
+        # if cursor in cursor_map:
+        #     return cursor_map[cursor]
+        # else:
+        #     cursor_map[cursor] = Cursor(cursor)
+        #     return cursor_map[cursor]
 
 
 if __name__ == "__main__":
