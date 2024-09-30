@@ -52,7 +52,7 @@ def parsing(file_path: str):
     index = clang.cindex.Index.create()
 
     # compile_commands.json 파일 위치 지정
-    clang.cindex.CompilationDatabase.fromDirectory(target_compile_command)
+    # clang.cindex.CompilationDatabase.fromDirectory(target_compile_command)
 
     # 파일 파싱
     translation_unit = index.parse(file_path, args=args)
@@ -64,7 +64,7 @@ def parsing_files(file_list: [str]):
     index = clang.cindex.Index.create()
 
     # compile_commands.json 파일 위치 지정
-    clang.cindex.CompilationDatabase.fromDirectory(target_compile_command)
+    # clang.cindex.CompilationDatabase.fromDirectory(target_compile_command)
 
     # 파일 파싱
     unit_list = []
@@ -96,7 +96,7 @@ def parse_project(directory):
     index = clang.cindex.Index.create()
 
     # compile_commands.json 파일 위치 지정
-    clang.cindex.CompilationDatabase.fromDirectory(target_compile_command)
+    # clang.cindex.CompilationDatabase.fromDirectory(target_compile_command)
 
     # 프로젝트 디렉토리 내의 모든 C++ 파일을 찾음
     files = list(find_cpp_files(directory))

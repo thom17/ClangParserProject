@@ -7,7 +7,8 @@ class ClassInfo(InfoBase):
         super().__init__(core_info, owner)
 
 
-
+    def get_has_fun_list(self):
+        return self.relationInfo.hasInfoMap.functionInfos.values()
 
 
 

@@ -30,14 +30,21 @@ class RelationInfo:
         self.infoMap["callBy"] = self.callByInfoMap
         self.infoMap["has"] = self.hasInfoMap
 
-    def add_callInfo(self, info:'InfoBase'):
+    def __str__(self):
+        this_str = 'RelationInfo('
+        for relation_name, info_set in self.infoMap.items():
+            this_str += f'\n\t{relation_name}:{info_set}'
+        this_str += '\t)'
+        return this_str
 
-        self.callInfoMap.put_info(info)
-        info.relationInfo.callByInfoMap.put_info(self)
+    def __repr__(self):
+        return self.__str__()
 
-    def add_callByInfo(self, info: 'InfoBase'):
-        self.callByInfoMap.put_info(info)
-        info.relationInfo.callInfoMap.put_info(self)
+    def __len__(self):
+        le = 0
+        for info_set in self.infoMap.values():
+            le += len(info_set)
+        return le
 
 class InfoBase(CoreInfoData, ABC):
     typeInfo: 'ClassInfo'
@@ -66,3 +73,12 @@ class InfoBase(CoreInfoData, ABC):
     def to_dict(self):
         core_info_dict = asdict(self.core_info)
         return core_info_dict
+
+    def add_callInfo(self, info:'InfoBase'):
+
+        self.relationInfo.callInfoMap.put_info(info)
+        info.relationInfo.callByInfoMap.put_info(self)
+
+    def add_callByInfo(self, info: 'InfoBase'):
+        self.relationInfo.callByInfoMap.put_info(info)
+        info.relationInfo.callInfoMap.put_info(self)

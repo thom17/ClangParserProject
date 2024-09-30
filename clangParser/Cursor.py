@@ -7,7 +7,8 @@ from clang.cindex import CursorKind
 
 import clangParser.clang_utill as ClangUtil
 
-import cchardet as chardet
+import chardet                  #for py 11
+# import cchardet as chardet
 import os
 
 

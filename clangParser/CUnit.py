@@ -5,15 +5,15 @@ from clang.cindex import SourceLocation
 from clang.cindex import TranslationUnit
 from clang.cindex import SourceRange
 
-if __name__ == "__main__":
-    from Cursor import Cursor
-    from clangParser import parsing, parse_project
-else:
-    from .Cursor import Cursor
-    from .clangParser import parsing, parse_project
+# if __name__ == "__main__":
+#     from Cursor import Cursor
+#     from clangParser import parsing, parse_project
+# else:
+#     from .Cursor import Cursor
+#     from .clangParser import parsing, parse_project
 
-    # from Cursor import Cursor
-    # from clangParser import parsing
+from clangParser.Cursor import Cursor
+from clangParser.clangParser import parsing, parse_project
 
 class CUnit:
     """

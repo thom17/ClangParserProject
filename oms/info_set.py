@@ -46,7 +46,7 @@ class InfoSet:
         elif new_info.__class__.__name__ == 'VarInfo':
             return self.__put_var_info(new_info)
 
-    def get_info(self, src_name):
+    def get_info(self, src_name)->'InfoBase':
         infos = []
         if src_name in self.classInfos:
             infos.append(self.classInfos.get(src_name))
@@ -63,7 +63,7 @@ class InfoSet:
             assert False, f"srcName 충돌 {src_name}"
             # return infos
 
-    def search_info(self, search_key):
+    def search_info(self, search_key) -> list:
         infos = []
         for src_name in self.classInfos:
             if search_key in src_name:
@@ -80,7 +80,7 @@ class InfoSet:
 
         return infos
 
-    def get_src_map(self):
+    def get_src_map(self) -> dict:
         """
         Class, Method, Var을 하나의 리스트로
         src_map을 생성
@@ -101,4 +101,13 @@ class InfoSet:
             info_map[src_name].append(self.varInfos[src_name])
 
         return info_map
+
+    def __str__(self):
+        return f"InfoSet(cls:{len(self.classInfos)}, fun:{len(self.functionInfos)}, var:{len(self.varInfos)})"
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __len__(self):
+        return len(self.get_src_map())
 

@@ -7,3 +7,4 @@ class FunctionInfo(InfoBase):
 
         super().__init__(core_info, owner)
 
+
