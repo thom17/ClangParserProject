@@ -104,7 +104,7 @@ if __name__ == "__main__":
         print()
         Cursor.print_node(node)
     print("###############"*5)
-    type_map = oms.get_visit_stmt_map()
+    type_map = oms.get_visit_type_map()
     for type_name in type_map:
 
         print(f"{'*'*10} {type_name}")

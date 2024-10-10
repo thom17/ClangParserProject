@@ -23,7 +23,7 @@ def get_stmt(file_path:str, line_num:int):
         print("parse Done")
 
         cursor: Cursor = Cursor(unit.get_method_body(line_num))
-        stmtMap = cursor.get_visit_stmt_map()
+        stmtMap = cursor.get_visit_type_map()
         json_ready_stmtMap = {key: [c.to_dict() for c in cursor_list] for key, cursor_list in stmtMap.items()}
         return jsonify(json_ready_stmtMap)
 

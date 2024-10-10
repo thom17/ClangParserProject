@@ -50,7 +50,7 @@ def get_stmt(srcSig):
             print("find Target")
             tunit = Parser.parse_context(table.sourceCode)
             cursor = Cursor(tunit.cursor, table.sourceCode)
-            stmtMap = cursor.get_visit_stmt_map()
+            stmtMap = cursor.get_visit_type_map()
             json_ready_stmtMap = {key: [c.to_dict() for c in cursor_list] for key, cursor_list in stmtMap.items()}
             return jsonify(json_ready_stmtMap)
         else:

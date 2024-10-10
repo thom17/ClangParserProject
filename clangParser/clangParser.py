@@ -54,6 +54,8 @@ def parsing(file_path: str):
     # compile_commands.json 파일 위치 지정
     # clang.cindex.CompilationDatabase.fromDirectory(target_compile_command)
 
+    assert os.path.isfile(file_path), f"파일 없음 : {file_path}"
+
     # 파일 파싱
     translation_unit = index.parse(file_path, args=args)
 

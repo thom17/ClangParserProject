@@ -5,7 +5,14 @@ from clang.cindex import TranslationUnit
 from clang.cindex import SourceRange
 from clang.cindex import CursorKind
 
-import clangParser.clang_utill as ClangUtil
+from collections import defaultdict
+from typing import Dict, List
+
+#to do: 이거 왜 에러나지?
+if __name__ == "__main__":
+    import clang_utill as ClangUtil
+else:
+    import clangParser.clang_utill as ClangUtil
 
 import chardet                  #for py 11
 # import cchardet as chardet
@@ -32,6 +39,9 @@ class Cursor:
         self.translation_unit: TranslationUnit =node.translation_unit
         self.unit_path: str = self.translation_unit.spelling
         self.source_code = source_code
+        self.line_size = None
+        
+        self.line_size = self.get_line_size()
 
 
         # try:
@@ -51,6 +61,16 @@ class Cursor:
         end: SourceLocation = self.extend.end
 
         return f"{start.line}:{start.column}~{end.line}:{end.column}"
+
+    def get_line_size(self) -> int:
+        # 해당 커서가 몇 줄인지 반환
+        
+        if self.line_size is None:
+            start: SourceLocation = self.extend.start
+            end: SourceLocation = self.extend.end
+            self.line_size = end.line - start.line + 1
+        return self.line_size
+
 
     def to_dict(self):
         # Convert to a dictionary or other JSON-serializable format
@@ -136,7 +156,7 @@ class Cursor:
             queue[:0] = node.get_children()
         return dec_list
 
-    def get_call_definition_map(self)->dict[clangCursor, clangCursor]:
+    def get_call_definition_map(self)->Dict[clangCursor, clangCursor]:
         """
         DFS로 target_stmt의 defintion node를 구한다.
         :param target_stmt:
@@ -194,7 +214,7 @@ class Cursor:
                 print(f"{file_path}  read Fail")
                 return "", mod
 
-    def get_range_code(self):
+    def get_range_code(self) ->str:
         """
         Returns the source code for the specific range including column information.
         """
@@ -276,7 +296,7 @@ class Cursor:
         return kind_map
 
 
-    def get_visit_line_map(self)->dict[int, list]:
+    def get_visit_line_map(self)->Dict[int, List['Cursor']]:
         line_map = {}
         queue = [self.node]
         if self.location.file:
@@ -305,19 +325,88 @@ class Cursor:
             queue.extend(node.get_children())
         return file_map
 
-    def get_visit_stmt_map(self) ->dict[str, list]:
+    def get_visit_type_map(self) ->dict[str, list]:
         stmt_map = {}
         queue = [self.node]
 
         while queue:
             node = queue.pop(0)
             c = get_cursor(node)
-            type_name = node.kind.name
+            type_name:str = node.kind.name
             if type_name not in stmt_map:
                 stmt_map[type_name] = []
             stmt_map[type_name].append(c)
             queue.extend(node.get_children())
         return stmt_map
+
+
+    def get_stmt_list(self) ->['Cursor']:
+        stmt_list = []
+        queue = [self.node]
+
+        while queue:
+            node = queue.pop(0)
+            if node.kind.is_statement():
+                stmt_list.append(get_cursor(node))
+            queue.extend(node.get_children())
+        return stmt_list
+
+
+
+    def get_stmt_map(self) -> Dict['Cursor', List['Cursor']]:
+        stmt_map = defaultdict(list)
+        self.__visit_stmt(stmt_map=stmt_map, key=self)
+
+        return stmt_map
+
+    def __visit_stmt(self, stmt_map: ['Cursor', ['Cursor']], key: 'Cursor'):
+        for node in key.node.get_children():
+            c = get_cursor(node)
+            stmt_map[key].append(c)
+
+            if node.kind.is_statement():
+                self.__visit_stmt(stmt_map=stmt_map, key=c)
+
+    def get_visit_line_size_map(self) -> dict[int, ['Cursor']]:
+        line_size_map = defaultdict(list)
+        queue = [self.node]
+
+        while queue:
+            node: clangCursor = queue.pop(0)
+            c:Cursor = get_cursor(node)
+            line_size = c.get_line_size()
+            line_size_map[line_size].append(c)
+            queue.extend(node.get_children())
+        return line_size_map
+
+
+
+    # '''
+    # 각 h의 위치를 어떤식으로 찾을지.... 흠..
+    # {
+    #     h1
+    #     {
+    #         h2
+    #     }
+    #     h3
+    #     {
+    #     }
+    # }
+    # '''
+    # def find_in_block(self, lines: [int]) -> 'Cursor':
+    #     #해당 lines가 속한 최소 크기의 block 을 구한다. (return Cursor)
+    #     if isinstance(lines, int):
+    #         lines = [lines]
+    #
+    #     line_size_map = self.get_visit_line_size_map()
+    #     for line_size, node_list in sorted(line_size_map.items()):
+    #         line_size.
+    #
+    #     for type_name in self.get_visit_type_map().:
+    #
+    #     visit_line_map = self.get_visit_line_map()
+
+
 
     def visit_print(self):
         queue = [(self.node, "")]
@@ -429,6 +518,12 @@ class Cursor:
             print(f"{self.node.location}")
             print(f"{self.node.extent}")
 
+    def __str__(self):
+        return f"Cursor({self.node.kind}, {self.spelling}, {self.node.location})"
+
+    def __repr__(self):
+        return self.__str__()
+
 cursor_map ={}
 def get_cursor(cursor)->Cursor:
     """
@@ -457,13 +552,14 @@ if __name__ == "__main__":
     import time
 
     start_time = time.time()
-    compliationunit = clangParser.parsing(r"D:\dev\AutoPlanning\trunk\AP-6979-TimeTask\mod_APImplantSimulation\ActuatorHybridFixture.cpp")
+    compliationunit = clangParser.parsing(r"D:\dev\AutoPlanning\Pano\changeMerge\mod_APImplantSimulation\ActuatorHybridFixture.cpp")
     end_time = time.time()
 
     elapsed_time = end_time - start_time
     print("Parsing time:", elapsed_time, "seconds")
 
-    mycursor = get_cursor(compliationunit.cursor)
+    mycursor = Cursor(compliationunit.cursor)
+     # = get_cursor(compliationunit.cursor)
 
     start_time = time.time()
     line_map = mycursor.get_visit_line_map()
@@ -484,7 +580,7 @@ if __name__ == "__main__":
 
     print(mycursor.get_range_code())
 
-    stmt_map = mycursor.get_visit_stmt_map()
+    stmt_map = mycursor.get_visit_type_map()
 
     for type_name in stmt_map:
         cursor_list = stmt_map[type_name]
