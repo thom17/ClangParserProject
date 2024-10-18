@@ -63,7 +63,7 @@ class InfoSet:
             assert False, f"srcName 충돌 {src_name}"
             # return infos
 
-    def search_info(self, search_key) -> list:
+    def search_info(self, search_key) -> List['InfoBase']:
         infos = []
         for src_name in self.classInfos:
             if search_key in src_name:

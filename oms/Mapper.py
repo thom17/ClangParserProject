@@ -12,6 +12,7 @@ from oms.dataset.class_info import ClassInfo
 from oms.dataset.function_info import FunctionInfo
 from oms.dataset.var_info import VarInfo
 
+from typing import Dict, List, Tuple
 from collections import defaultdict
 
 class_kind_list=[
@@ -215,7 +216,7 @@ def get_target_cursor(data):
 
 
 
-def parsing(cursor_list: [Cursor]) -> InfoSet:
+def parsing(cursor_list: List[Cursor]) ->Tuple[InfoSet, Dict[str, List[Cursor]]]:
     """
     Cursor 2 OMS
     없으면 OMS 생성

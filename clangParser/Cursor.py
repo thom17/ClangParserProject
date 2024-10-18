@@ -519,10 +519,19 @@ class Cursor:
             print(f"{self.node.extent}")
 
     def __str__(self):
-        return f"Cursor({self.node.kind}, {self.spelling}, {self.node.location})"
+        return f"Cursor({self.kind}, {self.spelling}, {self.node.location})"
 
     def __repr__(self):
         return self.__str__()
+
+    def __eq__(self, other):
+        if isinstance(other, clangCursor):
+            return self.node == other
+        elif isinstance(other, Cursor):
+            return self.node == other.node
+
+    def __hash__(self):
+        return hash(self.node)
 
 cursor_map ={}
 def get_cursor(cursor)->Cursor:
