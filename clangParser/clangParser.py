@@ -28,7 +28,7 @@ args = [
            '-D__MSVCRT__',
        ] + [f'-I {path}' for path in include_paths]
 
-def parse_context(context: str, file_remove = True) -> clang.cindex.TranslationUnit:
+def parse_context(context: str, file_remove: bool = True) -> clang.cindex.TranslationUnit:
     """
     문자열을 입력받아 임시파일을 생성하고
     생선된 파일을 파싱후 삭제

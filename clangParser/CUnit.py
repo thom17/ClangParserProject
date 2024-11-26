@@ -5,6 +5,10 @@ from clang.cindex import SourceLocation
 from clang.cindex import TranslationUnit
 from clang.cindex import SourceRange
 
+from typing import List
+
+import chardet
+
 # if __name__ == "__main__":
 #     from Cursor import Cursor
 #     from clangParser import parsing, parse_project
@@ -25,10 +29,10 @@ class CUnit:
     """
 
     def __init__(self, unit: TranslationUnit):
-        self.unit = unit
+        self.unit: TranslationUnit = unit
         self.file_path = unit.spelling
         self.file_name, self.file_extension = os.path.splitext(self.file_path)
-        self.this_file_nodes: [clangCursor] = []
+        self.this_file_nodes: List[clangCursor] = []
 
         cursor: clangCursor = unit.cursor
         for child_node in cursor.get_children():
@@ -57,11 +61,39 @@ class CUnit:
             my_units.append(CUnit(tunit))
         return my_units
 
+    def read_file(self):
+        with open(self.file_path, 'rb') as file:
+            raw_data = file.read()
+        file_encode = chardet.detect(raw_data)['encoding']
+
+        # 파일 읽기
+        with open(self.file_path, 'r', encoding=file_encode) as file:
+            return file.read()
+
+
+
+    def get_in_range_node(self, line_num: int) -> clangCursor:
+        assert(isinstance(line_num, int))
+
+        for node in self.this_file_nodes:
+            node:clangCursor = node
+
+            st_line = node.extent.start.line
+            ed_line = node.extent.end.line
+
+            if st_line <= line_num <= ed_line:
+                return node
+
     def get_method_body(self, line_num: int) -> clangCursor:
         assert(isinstance(line_num, int))
 
         for node in self.this_file_nodes:
-            if node.location.line == line_num:
+            node:clangCursor = node
+
+            st_line = node.extent.start.line
+            ed_line = node.extent.end.line
+
+            if st_line <= line_num <= ed_line:
                 return node
 
 

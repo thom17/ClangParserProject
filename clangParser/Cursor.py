@@ -6,7 +6,7 @@ from clang.cindex import SourceRange
 from clang.cindex import CursorKind
 
 from collections import defaultdict
-from typing import Dict, List
+from typing import Dict, List, Tuple, Set
 
 #to do: 이거 왜 에러나지?
 if __name__ == "__main__":
@@ -34,7 +34,7 @@ class Cursor:
         self.is_def = node.is_definition()
         self.spelling = node.spelling
         self.location: SourceLocation = node.location
-        self.extend: SourceRange = node.extent
+        self.extent: SourceRange = node.extent
         self.kind: str = node.kind.name
         self.translation_unit: TranslationUnit =node.translation_unit
         self.unit_path: str = self.translation_unit.spelling
@@ -57,8 +57,8 @@ class Cursor:
         # except:
         #     print("error ",node.location)
     def get_range(self):
-        start: SourceLocation = self.extend.start
-        end: SourceLocation = self.extend.end
+        start: SourceLocation = self.extent.start
+        end: SourceLocation = self.extent.end
 
         return f"{start.line}:{start.column}~{end.line}:{end.column}"
 
@@ -66,11 +66,10 @@ class Cursor:
         # 해당 커서가 몇 줄인지 반환
         
         if self.line_size is None:
-            start: SourceLocation = self.extend.start
-            end: SourceLocation = self.extend.end
+            start: SourceLocation = self.extent.start
+            end: SourceLocation = self.extent.end
             self.line_size = end.line - start.line + 1
         return self.line_size
-
 
     def to_dict(self):
         # Convert to a dictionary or other JSON-serializable format
@@ -80,8 +79,8 @@ class Cursor:
             'column': self.location.column
         }
 
-        start: SourceLocation = self.extend.start
-        end: SourceLocation = self.extend.end
+        start: SourceLocation = self.extent.start
+        end: SourceLocation = self.extent.end
 
         range = {
             'startLine': start.line,
@@ -109,6 +108,44 @@ class Cursor:
             queue.extend(node.get_children())
         return visit_map
 
+    def get_in_tab(self) -> str:
+        line_code = self.get_range_line_code()
+        start = self.location.column
+        intab = line_code[:start - 1]
+
+        # print(line_code)
+        # print(intab, 'Intab')
+        assert intab, f'err in tab'
+        return intab
+
+    def search_context_node(self, context) -> Dict[int, List['Cursor']]:
+        '''
+        clnag에서 정상적으로 파싱이 안되는 경우가 있다.
+        따라서 <LineNum, []> 형태로 반환하여 줄번호로도 추적되게
+        :param context: 찾고자하는 키워드
+        :return:
+        '''
+
+
+        result_search = {}
+
+        range_code_lines = self.get_range_code().splitlines()
+        target_line_list = []
+        for idx, line in enumerate(range_code_lines):
+            if context in line:
+                target_line_list.append(self.location.line + idx)
+
+        line_map = self.get_visit_line_map()
+
+        for line in target_line_list:
+            node_list = []
+            if line in line_map:
+                for node in line_map[line]:
+                    if node.get_line_size() == 1 and context in node.get_range_code():
+                        node_list.append(node)
+
+            result_search[line] = node_list
+        return result_search
 
 
 
@@ -156,6 +193,41 @@ class Cursor:
             queue[:0] = node.get_children()
         return dec_list
 
+    def get_line_call_trace(self) -> List[Tuple[str, Set[str]]]:
+        '''
+        2024-11-26
+        visit_line과 call_def를 혼합하여
+        각 라인의 호출하는 src를 구한다.
+        :return: [ Tuple (Code: str, Set[src_name: str] ) ]
+        '''
+
+        line_map = self.get_visit_line_map()
+        def_map = self.get_call_definition_map()
+
+        src_set_map = defaultdict(set)
+        for line, nodes in line_map.items():
+            for node in nodes:
+                if node.node in def_map:
+                    src = Cursor(def_map[node.node]).get_src_name()
+                    src_set_map[line].add(src)
+                # else:
+                #     print(f'skip {src}')
+
+
+        #줄번호, 인덱스 동기화를 위해
+        codes, _ = self.read_file()
+        codes = [codes] + codes.splitlines()
+
+        st_line = self.extent.start.line
+        ed_line = self.extent.end.line
+
+        result = []
+        for line in range(st_line, ed_line):
+            result.append((codes[line], src_set_map[line]))
+
+        print(st_line, "-", ed_line)
+        return result
+
     def get_call_definition_map(self)->Dict[clangCursor, clangCursor]:
         """
         DFS로 target_stmt의 defintion node를 구한다.
@@ -173,7 +245,7 @@ class Cursor:
             queue[:0] = node.get_children()
         return dec_dict
 
-    def read_file(self) -> (str, int):
+    def read_file(self) -> Tuple[str, int]:
         """
         해당 노드의 파일 읽기. 우선순위도 함께 반환
         1. range 코드
