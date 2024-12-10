@@ -3,8 +3,11 @@ from clang.cindex import Token, CursorKind, TokenKind
 
 from collections import defaultdict
 
-def to_clang(cursor:'Cursor') -> clangCursor:
-    if isinstance(cursor, 'Cursor'):
+from typing import List, Union
+
+
+def to_clang(cursor:Union['Cursor', clangCursor]) -> clangCursor:
+    if hasattr(cursor, 'node'):
         return cursor.node
     else:
         assert isinstance(cursor, clangCursor)

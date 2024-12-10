@@ -1,6 +1,7 @@
 import clang.cindex
 import os
 import tempfile
+from datetime import datetime
 
 target_compile_command = r"D:\dev\AutoPlanning\trunk\AP-6979-TimeTask"
 
@@ -28,22 +29,33 @@ args = [
            '-D__MSVCRT__',
        ] + [f'-I {path}' for path in include_paths]
 
-def parse_context(context: str, file_remove: bool = True) -> clang.cindex.TranslationUnit:
+def parse_context(context: str, file_path:str = None, file_remove: bool = True) -> clang.cindex.TranslationUnit:
     """
     문자열을 입력받아 임시파일을 생성하고
     생선된 파일을 파싱후 삭제
     :param context:
     :return:
     """
+
+    def generate_filename(prefix="file", extension="txt"):
+        # 현재 시간을 기반으로 파일명 생성
+        return
+
+
+    temp_path = 'parse_context.cpp'
+    if file_path is not None:
+        current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+        temp_path = f"{file_path}_parse_context_{current_time}.cpp"
+
     # 임시 파일 생성
     # with tempfile.NamedTemporaryFile(delete=False, suffix='.cpp') as temp:
-    with open('parse_context.cpp', 'w', encoding='utf-8') as temp:
+    with open(temp_path, 'w', encoding='utf-8') as temp:
         # 코드를 임시 파일에 쓰기
         temp.write(context)
-    tu = parsing('parse_context.cpp')   #close 해야 save된다.
+    tu = parsing(temp_path)   #close 해야 save된다.
 
     if file_remove:
-        os.remove('parse_context.cpp')
+        os.remove(temp_path)
 
     return tu
 

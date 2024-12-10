@@ -174,7 +174,6 @@ class Cursor:
         :return:
         """
         dec_list: ['Cursor'] = []
-        dec_list: ['Cursor'] = []
         queue = [self.node]
 
 
