@@ -1,10 +1,40 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 from collections import defaultdict
+
 class InfoSet:
     def __init__(self):
         self.classInfos: Dict[str, 'ClassInfo'] = {}
         self.functionInfos: Dict[str, 'FunctionInfo'] = {}
         self.varInfos: Dict[str, 'VarInfo'] = {}
+
+    def __add__(self, other: 'InfoSet') -> 'InfoSet':
+        if not isinstance(other, InfoSet):
+            raise TypeError(f"Unsupported operand type(s) for +: 'InfoSet' and '{type(other).__name__}'")
+
+        new_info_set = InfoSet()
+        new_info_set.update(self)
+        duplicate_src = new_info_set.update(other)
+        assert duplicate_src == 0, f'duplicate_src {len(duplicate_src)} 개의 중복 키.'
+
+        return new_info_set
+
+    def update(self, other: 'InfoSet') -> List[str]:
+        if not isinstance(other, InfoSet):
+            raise TypeError(f"Unsupported operand type(s) for update: 'InfoSet' and '{type(other).__name__}'")
+
+        duplicate_src = []
+        other_src_map = other.get_src_map()
+        for src in other_src_map:
+            if not self.get_info(src) is None:
+                duplicate_src.append(src)
+
+        # 중복 키의 경우 `other`의 값으로 덮어씀
+        self.classInfos.update(other.classInfos)
+        self.functionInfos.update(other.functionInfos)
+        self.varInfos.update(other.varInfos)
+
+        return duplicate_src
+
 
     def get_class_info(self, src_name: str) -> 'ClassInfo':
         return self.classInfos.get(src_name)

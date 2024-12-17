@@ -216,7 +216,7 @@ def get_target_cursor(data):
 
 
 
-def parsing(cursor_list: List[Cursor]) ->Tuple[InfoSet, Dict[str, List[Cursor]]]:
+def parsing(cursor_list: List[Cursor], do_update = True) ->Tuple[InfoSet, Dict[str, List[Cursor]]]:
     """
     Cursor 2 OMS
     없으면 OMS 생성
@@ -242,19 +242,19 @@ def parsing(cursor_list: List[Cursor]) ->Tuple[InfoSet, Dict[str, List[Cursor]]]
 
     print("\nMapping done")
 
+    if do_update:
+        sorted_key = sorted(all_data_set.functionInfos)
+        size = len(sorted_key)
+        done = 0
+        for fun_src_name in sorted_key:
+            mycursor = src_map[fun_src_name]
+            method_info = all_data_set.functionInfos[fun_src_name]
+            update_call(mycursor, method_info, all_data_set, clang_src_map)
+            done += 1
+            percent = (done / size) * 100
+            print(f"\rUpdate Call ({percent:.2f}%) {done}/{size}", end="")
 
-    sorted_key = sorted(all_data_set.functionInfos)
-    size = len(sorted_key)
-    done = 0
-    for fun_src_name in sorted_key:
-        mycursor = src_map[fun_src_name]
-        method_info = all_data_set.functionInfos[fun_src_name]
-        update_call(mycursor, method_info, all_data_set, clang_src_map)
-        done += 1
-        percent = (done / size) * 100
-        print(f"\rUpdate Call ({percent:.2f}%) {done}/{size}", end="")
-
-    print("\nUpdate done")
+        print("\nUpdate done")
 
     return all_data_set, clang_src_map
 
