@@ -2,6 +2,26 @@
 from clangParser.CUnit import CUnit
 from clangParser.Cursor import Cursor
 import clangParser.clangParser as Parser
+from collections import defaultdict
+import time
+
+def test_print_time():
+    print()
+    time_map = defaultdict(list)
+    files = Parser.find_cpp_files( r'D:\dev\AutoPlanning\trunk\AP_trunk_pure\mod_APImplantSimulation')
+    for path in files:
+        st = time.time()
+        unit = CUnit.parse(path)
+        ed = time.time()
+
+        time_map[ed-st].append(unit)
+
+    for t, units in sorted(time_map.items()):
+        if 1 < len(units):
+            print(f'{t} : {len(units)} units.')
+        else:
+            unit:CUnit = units[0]
+            print(f'{t:.2f}  line {len(unit.code.splitlines())} / txt : {len(unit.code)}')
 
 def test_get_method_body():
     print(test_get_method_body)

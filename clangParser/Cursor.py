@@ -289,16 +289,18 @@ class Cursor:
         """
         Returns the source code for the specific range including column information.
         """
-
-        source_code, mod = self.read_file()
+        if self.source_code:
+            source_code = self.source_code
+        else:
+            source_code, mod = self.read_file()
 
         if mod == 1:
             extent = self.node.extent
             start = extent.start
             end = extent.end
 
-            start_index = self.calculate_offset(source_code, start.line, start.column)
-            end_index = self.calculate_offset(source_code, end.line, end.column)
+            start_index = self.__calculate_offset(source_code, start.line, start.column)
+            end_index = self.__calculate_offset(source_code, end.line, end.column)
 
             return source_code[start_index:end_index]
         else:
@@ -312,6 +314,11 @@ class Cursor:
         extent = self.node.extent
         start = extent.start
         end = extent.end
+
+        if self.source_code:
+            lines = self.source_code.splitlines()
+            return ''.join(lines[start.line - 1:end.line])
+
 
         assert start.file.name == end.file.name, "Start and end are in different files."
 
@@ -327,7 +334,7 @@ class Cursor:
             # Lines are 0-based in Python, adjust by -1 since Clang lines are 1-based
             return ''.join(lines[start.line - 1:end.line])
 
-    def calculate_offset(self, source_code, line, column):
+    def __calculate_offset(self, source_code, line, column):
         """
         Calculates the offset of the specified line and column in the source code.
         """

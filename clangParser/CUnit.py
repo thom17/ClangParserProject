@@ -33,6 +33,7 @@ class CUnit:
         self.file_path = unit.spelling
         self.file_name, self.file_extension = os.path.splitext(self.file_path)
         self.this_file_nodes: List[clangCursor] = []
+        self.code: str = self.read_file()
 
         cursor: clangCursor = unit.cursor
         for child_node in cursor.get_children():
@@ -69,8 +70,6 @@ class CUnit:
         # 파일 읽기
         with open(self.file_path, 'r', encoding=file_encode) as file:
             return file.read()
-
-
 
     def get_in_range_node(self, line_num: int) -> clangCursor:
         assert(isinstance(line_num, int))

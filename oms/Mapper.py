@@ -36,17 +36,6 @@ src_map:[str, ] = {}
 
 
 
-
-def is_target_node(node: Cursor):
-    if node is None:
-        return False
-    elif node.is_definition() and node.get_definition() == node and not node.kind.name == 'CXX_ACCESS_SPEC_DECL':
-        return True
-    elif node.kind.name in kind_list:
-        return True
-
-
-
 def make_core_info(mycursor: MyCursor):
     """
     클래스의 생성을 여기서 하는게 맞을까?
@@ -101,7 +90,7 @@ def new_fun_info(mycursor: MyCursor, base_info_set, clang_src_map):
     src_map[method_info.src_name] = mycursor
     return method_info
 
-def cursor2cls_info(cursor: Cursor, base_info_set, clang_src_map):
+def __cursor2cls_info(cursor: Cursor, base_info_set, clang_src_map):
     mycursor = MyCursor(cursor)
     src_name = mycursor.get_src_name()
     cls_info = base_info_set.get_class_info(src_name)
@@ -129,24 +118,8 @@ def __cursor2fun_info(cursor: Cursor, base_info_set, clang_src_map):
         base_info_set.put_info(method_info)
     return method_info
 
-def update_call(my_cursor: MyCursor, oms_data: InfoBase, oms_set: InfoSet, clang_src_map:[str, Cursor]):
-    visit_line_map = my_cursor.get_visit_line_map()
+# def
 
-    for line in visit_line_map:
-        for cursor in visit_line_map[line]:
-            def_node = cursor.node.get_definition()
-
-            if def_node is None:
-                def_node = cursor.node.referenced
-                call_data = Cursor2OMS(def_node, oms_set, clang_src_map)
-            else:
-                call_data = Cursor2OMS(def_node, oms_set, clang_src_map)
-
-            if call_data:
-                oms_data.add_callInfo(call_data)
-                owner_data = oms_data.owner
-                if owner_data:
-                    owner_data.add_callInfo(call_data)
 
 def Cursor2OMS(cursor: Cursor, base_info_set, clang_src_map):
     """
@@ -155,6 +128,17 @@ def Cursor2OMS(cursor: Cursor, base_info_set, clang_src_map):
     :param cursor:
     :return:
     """
+
+    def is_target_node(node: Cursor):
+        if node is None:
+            return False
+        elif node.is_definition() and node.get_definition() == node and not node.kind.name == 'CXX_ACCESS_SPEC_DECL':
+            return True
+        elif node.kind.name in kind_list:
+            return True
+
+
+
     if cursor is None:
         return None
 
@@ -175,7 +159,7 @@ def Cursor2OMS(cursor: Cursor, base_info_set, clang_src_map):
     if is_target_node(cursor):
         kind: str = cursor.kind.name
         if kind in class_kind_list:
-            return cursor2cls_info(cursor, base_info_set, clang_src_map)
+            return __cursor2cls_info(cursor, base_info_set, clang_src_map)
         elif kind in method_kind_list:
             return __cursor2fun_info(cursor, base_info_set, clang_src_map)
         elif kind in var_kind_list:
@@ -223,6 +207,25 @@ def parsing(cursor_list: List[Cursor], do_update = True) ->Tuple[InfoSet, Dict[s
     :param [cursor]:
     :return InfoSet:
     """
+
+    def update_call(my_cursor: MyCursor, oms_data: InfoBase, oms_set: InfoSet, clang_src_map: [str, Cursor]):
+        visit_line_map = my_cursor.get_visit_line_map()
+
+        for line in visit_line_map:
+            for cursor in visit_line_map[line]:
+                def_node = cursor.node.get_definition()
+
+                if def_node is None:
+                    def_node = cursor.node.referenced
+                    call_data = Cursor2OMS(def_node, oms_set, clang_src_map)
+                else:
+                    call_data = Cursor2OMS(def_node, oms_set, clang_src_map)
+
+                if call_data:
+                    oms_data.add_callInfo(call_data)
+                    owner_data = oms_data.owner
+                    if owner_data:
+                        owner_data.add_callInfo(call_data)
 
     cursor_list = get_target_cursor(cursor_list)
 
