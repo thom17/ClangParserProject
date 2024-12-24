@@ -291,6 +291,7 @@ class Cursor:
         """
         if self.source_code:
             source_code = self.source_code
+            mod = 1
         else:
             source_code, mod = self.read_file()
 
