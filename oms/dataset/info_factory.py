@@ -12,8 +12,9 @@ from oms.dataset.class_info import ClassInfo
 from oms.dataset.function_info import FunctionInfo
 from oms.dataset.var_info import VarInfo
 
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from collections import defaultdict
+
 
 class_kind_list=[
     "STRUCT_DECL", "CLASS_DECL", "ENUM_DECL", "TYPEDEF_DECL", "NAMESPACE"
@@ -118,7 +119,13 @@ def __cursor2fun_info(cursor: Cursor, base_info_set, clang_src_map):
         base_info_set.put_info(method_info)
     return method_info
 
-# def
+def Cursor2InfoBase(cursor: Cursor)->Optional[InfoBase]:
+    base_info_set = InfoSet()
+    clang_src_map = defaultdict(list)
+    return Cursor2OMS(cursor=cursor, base_info_set=base_info_set, clang_src_map=clang_src_map)
+
+
+
 
 
 def Cursor2OMS(cursor: Cursor, base_info_set, clang_src_map):
