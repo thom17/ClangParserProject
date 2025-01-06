@@ -41,14 +41,19 @@ class CUnit:
                 self.this_file_nodes.append(child_node)
                 #self.this_file_nodes.append(Cursor.Cursor(child_node, self.file_path))
 
-    def get_method_body_in_range(self, start_line, end_line):
-        node = self.unit.cursor
-        target_range = []
-        for child in node.walk_preorder():
-            if (child.location.line >= start_line and child.location.line <= end_line):
-                target_range.append(child)
-        # target_range에 포함된 노드를 기반으로 필요한 처리 수행
-        return target_range
+    # def get_method_body_in_range(self, start_line, end_line):
+    #     '''
+    #     2025-01-06
+    #     모든 자식 노드를 순회하여 내장 함수 (window kit) 호출됨
+    #     일단은 사용 x. this_node 내에서 검색하도록 변경해야함
+    #     '''
+    #     node = self.unit.cursor
+    #     target_range = []
+    #     for child in node.walk_preorder():
+    #         if (child.location.line >= start_line and child.location.line <= end_line):
+    #             target_range.append(child)
+    #     # target_range에 포함된 노드를 기반으로 필요한 처리 수행.
+    #     return target_range
 
     @staticmethod
     def parse(file_path)-> 'CUnit':
