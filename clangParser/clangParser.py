@@ -99,11 +99,18 @@ def simple_visit(node: clang.cindex.Cursor, i=0):
 
 
 
-def find_cpp_files(directory):
+def find_cpp_files(directory:str, add_h: bool = True) ->list[str]:
+    find_type = '.cpp'
+    if add_h:
+        find_type = ('.cpp', '.h')
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if file.endswith(('.cpp', '.h')):
+            if file.endswith(find_type):
                 yield os.path.join(root, file)
+
+
+
+
 
 def parse_project(directory):
     # clang.cindex.Config.set_library_file(r"C:\Program Files\LLVM\bin\libclang.dll")

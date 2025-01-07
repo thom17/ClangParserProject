@@ -5,7 +5,7 @@ from clang.cindex import SourceLocation
 from clang.cindex import TranslationUnit
 from clang.cindex import SourceRange
 
-from typing import List
+from typing import List, Dict, Tuple, Optional
 
 import chardet
 
@@ -30,16 +30,24 @@ class CUnit:
 
     def __init__(self, unit: TranslationUnit):
         self.unit: TranslationUnit = unit
-        self.file_path = unit.spelling
+        self.file_path: str = unit.spelling
         self.file_name, self.file_extension = os.path.splitext(self.file_path)
         self.this_file_nodes: List[clangCursor] = []
         self.code: str = self.read_file()
+        self.preprocessor_line_map: Dict[int, str] = {}
 
+        #전처리관련 코드를 포함할 경우 매우 복잡해진다.
         cursor: clangCursor = unit.cursor
         for child_node in cursor.get_children():
             if child_node.location.file.name == self.file_path:
                 self.this_file_nodes.append(child_node)
                 #self.this_file_nodes.append(Cursor.Cursor(child_node, self.file_path))
+
+        #전처리 관련 코드는 여기서 별도로 관리
+        line_codes = self.code.splitlines()
+        for idx, line in enumerate(line_codes):
+            if line.lstrip().startswith('#'):
+                self.preprocessor_line_map[idx+1] = line
 
     # def get_method_body_in_range(self, start_line, end_line):
     #     '''
@@ -66,6 +74,45 @@ class CUnit:
         for tunit in parse_project(file_path):
             my_units.append(CUnit(tunit))
         return my_units
+
+    @staticmethod
+    def get_src_pair_map(unit1: 'CUnit', unit2:'CUnit') -> Dict[str, Tuple[Optional[Cursor], Optional[Cursor]]]:
+        first = unit1.get_this_Cursor()
+        second = unit2.get_this_Cursor()
+
+        src_pair_map :Dict[str, Tuple[Optional[Cursor], Optional[Cursor]]]= {}
+        for c1 in first:
+            src_pair_map[c1.get_src_name()] = (c1, None)
+        for c2 in second:
+            src = c2.get_src_name()
+            c1 = src_pair_map.get(src, None)
+            if c1:
+                c1 = c1[0]
+            src_pair_map[src] = (c1, c2)
+
+        return src_pair_map
+
+
+    def get_this_Cursor(self) -> list[Cursor]:
+        '''
+        사실상 h 파일을 위해 추가로 작성한 메서드
+        실질적인 this_file_nodes를 Cursor로 생성하여 반환함
+        '''
+        if self.file_path.endswith('.h'):
+            head_dec_cursor = [Cursor(node, self.code) for node in self.this_file_nodes]
+            in_dec_cursor = []
+            for cursor in head_dec_cursor:
+                in_dec_cursor = in_dec_cursor + [Cursor(ch, self.code) for ch in cursor.node.get_children()]
+            return  head_dec_cursor + in_dec_cursor
+
+        if self.file_path.endswith('.cpp'):
+            return [Cursor(node, self.code) for node in self.this_file_nodes]
+
+
+
+
+
+
 
     def read_file(self):
         with open(self.file_path, 'rb') as file:
@@ -99,6 +146,9 @@ class CUnit:
 
             if st_line <= line_num <= ed_line:
                 return node
+
+
+
 
 
 if __name__ == "__main__":

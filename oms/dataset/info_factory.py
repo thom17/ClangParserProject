@@ -1,6 +1,7 @@
 import clang.cindex
 from clang.cindex import Cursor
 import clangParser.clangParser as clangParser
+import clangParser.clang_utill as ClangUtil
 from clangParser.Cursor import Cursor as MyCursor
 from clangParser.CUnit import CUnit
 
@@ -152,8 +153,7 @@ def Cursor2OMS(cursor: Cursor, base_info_set, clang_src_map):
     if isinstance(cursor, MyCursor):
         cursor = cursor.node
 
-
-    src_name = MyCursor(cursor).get_src_name()
+    src_name = ClangUtil.get_src_name(cursor)
     if not clang_src_map[src_name].__contains__(cursor):
         clang_src_map[src_name].append(cursor)
 

@@ -4,8 +4,12 @@ import clang.cindex as ClangIndex
 
 from typing import Tuple, Optional
 
+'''
+모든 메서드에 메서드 src로 DAutoGen을 생성하는걸 목표로.
+'''
+
 editor = CodeEditor(r"D:\dev\AutoPlanning\trunk\Ap-Trunk-auto-task\mod_APImplantSimulation\ActuatorHybridFixture.cpp")
-source_code = editor.cpp_unit.code
+source_code = editor.file_unit.code
 def get_set(node: ClangIndex.Cursor)-> Tuple[Cursor, Optional[Cursor]]:
     # source_code = None
     cursor = Cursor(node=node, source_code=source_code)

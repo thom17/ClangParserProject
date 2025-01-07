@@ -101,3 +101,45 @@ def test_parse_temp_file():
 
 
     # print(f'child len: {len(in_project_unit.this_file_nodes)} / {len(temp_unit.this_file_nodes)}')
+import difflib
+from typing import List
+
+def find_most_similar(str_list: List[str], data: str) -> str:
+    # get_close_matches는 리스트에서 가장 유사한 문자열을 찾습니다.
+    # n=1은 가장 유사한 하나의 결과만 반환하도록 설정
+    # cutoff=0은 모든 유사도 수준을 허용
+    matches = difflib.get_close_matches(data, str_list, n=1, cutoff=0)
+    if matches:
+        return matches[0]
+    else:
+        return None  # 유사한 문자열이 없는 경우
+def test_dec_similar():
+    print(test_dec_similar)
+
+
+    file_path = r'D:\dev\AutoPlanning\Bum\Merge\mod_APImplantSimulation\ActuatorHybridFixture.cpp'
+    my_unit = CUnit.parse(file_path=file_path)
+    dec_list = list(my_unit.preprocessor_line_map.values())
+    dec = '#include "../DataAccessor/DAutoGenTester.h"'
+    print(find_most_similar(dec_list, dec))
+
+def test_src_pair():
+    path = r'D:\dev\AutoPlanning\trunk\AP_trunk_pure\AppUICore\ActuatorImage.cpp'
+    cpp_unit = CUnit.parse(path)
+    head_unit = CUnit.parse(path.replace('.cpp', '.h'))
+
+    src_pair = CUnit.get_src_pair_map(cpp_unit, head_unit)
+    for src, (cpp, h) in sorted(src_pair.items()):
+        if cpp:
+            cpp = cpp.kind
+        else:
+            cpp = None
+        if h:
+            h = h.kind
+        else:
+            h= None
+
+        # cpp = bool(cpp)
+        # h = bool(h)
+
+        print(f'{src} : {cpp}, {h}')
