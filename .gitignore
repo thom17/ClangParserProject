@@ -1,0 +1,5 @@
+.idea
+.ipynb_checkpoints
+jupyter/results
+jupyter/logs
+__pycache__
