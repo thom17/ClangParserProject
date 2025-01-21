@@ -3,16 +3,11 @@ from clang.cindex import Cursor as clangCursor
 from clang.cindex import SourceLocation
 from clang.cindex import TranslationUnit
 from clang.cindex import SourceRange
-from clang.cindex import CursorKind
 
 from collections import defaultdict
 from typing import Dict, List, Tuple, Set
 
-#to do: 이거 왜 에러나지?
-if __name__ == "__main__":
-    import clang_utill as ClangUtil
-else:
-    import clangParser.clang_utill as ClangUtil
+import clangParser.clang_utill as ClangUtil
 
 import chardet                  #for py 11
 # import cchardet as chardet
@@ -20,10 +15,8 @@ import os
 
 
 
-from sympy.physics.units import force
-
-
 class Cursor:
+
     """
     clang.cindex.Cursor 가 불편해서 정의
     """
@@ -42,6 +35,11 @@ class Cursor:
         self.line_size = None
         
         self.line_size = self.get_line_size()
+        self.child_list: List['Cursor'] = [Cursor(child, source_code) for child in node.get_children()]
+
+        from clangParser.CursorVisitor import CursorVisitor
+        self.cursor_visitor = CursorVisitor(self)
+        self.clang_visitor = self.cursor_visitor
 
 
         # try:
@@ -56,6 +54,9 @@ class Cursor:
         #             self.node_source_code = self.unit_source_code
         # except:
         #     print("error ",node.location)
+    def get_children(self) -> List['Cursor']:
+        return self.child_list
+
     def get_range(self):
         start: SourceLocation = self.extent.start
         end: SourceLocation = self.extent.end
@@ -95,18 +96,6 @@ class Cursor:
             'location': location,
             'code': self.get_range_code()
         }
-
-    def get_visit_def_map(self, node=None) -> [str, clangCursor]:
-        visit_map:[str, 'clangCursor'] = {} #1:1 대응으로 바꿔도 문제없어야 함
-        if node is None:
-            node=self.node
-        queue = [node]
-        while queue:
-            node = queue.pop(0)
-            if node.is_definition():
-                visit_map[Cursor(node).get_src_name()] = node
-            queue.extend(node.get_children())
-        return visit_map
 
     def get_in_tab(self) -> str:
         line_code = self.get_range_line_code()
@@ -353,110 +342,41 @@ class Cursor:
 
 
     def get_visit_line_token_map(self, node = None)->dict[int, [clang.cindex.Token]]:
-        line_map = {}
-        if node is None:
-            node=self.node
-        for token in node.get_tokens():
-            line: int = token.location.line
-            if line not in line_map:
-                line_map[line] = []
-            line_map[line].append(token)
-        return line_map
+        return self.visitor.get_visit_line_token_map()
 
     def get_visit_kind_token_map(self, node = None)->dict[str, [clang.cindex.Token]]:
-        kind_map = {}
-        if node is None:
-            node=self.node
-        for token in node.get_tokens():
-            kind = token.kind
-            if kind not in kind_map:
-                kind_map[kind] = []
-            kind_map[kind].append(token)
-        return kind_map
+        return self.visitor.get_visit_kind_token_map()
 
 
-    def get_visit_line_map(self)->Dict[int, List['Cursor']]:
-        line_map = {}
-        queue = [self.node]
-        if self.location.file:
-            base_file_path = self.location.file.name
-        while queue:
-            node = queue.pop(0)
-            c = get_cursor(node)
-            line: int = node.location.line
-            if line not in line_map:
-                line_map[line] = []
-            line_map[line].append(c)
-            queue.extend(node.get_children())
-        return line_map
+    def get_visit_line_map(self) -> Dict[int, List['Cursor']]:
+        return self.visitor.get_visit_line_map()
 
-    def get_file_map(self) -> {str, list}:
-        file_map = {}
-        queue: [clangCursor] = [self.node]
-        file_name = self.location.file.name if self.location.file else "None"
+    def get_file_map(self) -> Dict[str, List['Cursor']]:
+        return self.visitor.get_file_map()
 
-        while queue:
-            node = queue.pop(0)
-            new_cursor = get_cursor(node)
-            if file_name not in file_map:
-                file_map[file_name] = []
-            file_map[file_name].append(new_cursor)
-            queue.extend(node.get_children())
-        return file_map
+    def get_visit_type_map(self) -> Dict[str, List['Cursor']]:
+        return self.visitor.get_visit_type_map()
 
-    def get_visit_type_map(self) ->dict[str, list]:
-        stmt_map = {}
-        queue = [self.node]
-
-        while queue:
-            node = queue.pop(0)
-            c = get_cursor(node)
-            type_name:str = node.kind.name
-            if type_name not in stmt_map:
-                stmt_map[type_name] = []
-            stmt_map[type_name].append(c)
-            queue.extend(node.get_children())
-        return stmt_map
-
-
-    def get_stmt_list(self) ->['Cursor']:
-        stmt_list = []
-        queue = [self.node]
-
-        while queue:
-            node = queue.pop(0)
-            if node.kind.is_statement():
-                stmt_list.append(get_cursor(node))
-            queue.extend(node.get_children())
-        return stmt_list
-
-
+    def get_stmt_list(self) -> List['Cursor']:
+        return self.visitor.get_stmt_list()
 
     def get_stmt_map(self) -> Dict['Cursor', List['Cursor']]:
-        stmt_map = defaultdict(list)
-        self.__visit_stmt(stmt_map=stmt_map, key=self)
-
-        return stmt_map
-
-    def __visit_stmt(self, stmt_map: ['Cursor', ['Cursor']], key: 'Cursor'):
-        for node in key.node.get_children():
-            c = get_cursor(node)
-            stmt_map[key].append(c)
-
-            if node.kind.is_statement():
-                self.__visit_stmt(stmt_map=stmt_map, key=c)
+        return self.visitor.get_stmt_map()
 
     def get_visit_line_size_map(self) -> dict[int, ['Cursor']]:
-        line_size_map = defaultdict(list)
-        queue = [self.node]
+        return self.visitor.get_visit_line_size_map()
 
-        while queue:
-            node: clangCursor = queue.pop(0)
-            c:Cursor = get_cursor(node)
-            line_size = c.get_line_size()
-            line_size_map[line_size].append(c)
-            queue.extend(node.get_children())
-        return line_size_map
+    def visit_print(self):
+        self.visitor.visit_print()
+
+    def visit_nodes(self) -> List[clangCursor]:
+        return self.visitor.visit_nodes()
+
+    def get_visit_unit_map(self) -> Dict[TranslationUnit, List['Cursor']]:
+        return self.visitor.get_visit_unit_map()
+
+    def get_visit_line_size_map(self) -> dict[int, ['Cursor']]:
+        return self.visitor.get_visit_line_size_map()
 
 
 
@@ -485,47 +405,6 @@ class Cursor:
     #
     #     visit_line_map = self.get_visit_line_map()
 
-
-
-    def visit_print(self):
-        queue = [(self.node, "")]
-
-        while len(queue):
-            node, lv = queue.pop(0)
-            print(f"{lv}{node.spelling} ({node.kind} {node.location.line}:{node.location.column})")
-            c = get_cursor(node)
-            print(c.get_range_code())
-            # Update the level indicator for child nodes
-            new_lv = lv + "* "
-
-            # Prepare child nodes to be added to the queue
-            childs = [(child, new_lv) for child in node.get_children()]
-            queue = childs + queue
-
-    def visit_nodes(self)->[clangCursor]:
-        visit_list: ['Cursor'] = []
-        queue = [self.node]
-
-        while queue:
-            node = queue.pop(0)
-            visit_list.append(node)
-            queue[:0] = node.get_children()
-        return visit_list
-
-
-    def get_visit_unit_map(self) -> dict[TranslationUnit, list['Cursor']]:
-        unit_map = {}
-        queue = [self.node]
-
-        while queue:
-            node = queue.pop(0)
-            c = get_cursor(node)
-            unit = node.translation_unit
-            if unit not in unit_map:
-                unit_map[unit] = []
-            unit_map[unit].append(c)
-            queue.extend(node.get_children())
-        return unit_map
 
     def get_simple_file_name(self, node=None):
         if node is None:
