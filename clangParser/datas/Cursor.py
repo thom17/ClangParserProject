@@ -15,6 +15,8 @@ import os
 
 
 
+
+
 class Cursor:
 
     """
@@ -24,11 +26,12 @@ class Cursor:
     def __init__(self, node: clangCursor, source_code: str = None):
         assert isinstance(node, clangCursor), f"node{type(node)} must be an instance of clang.cindex.Cursor"
         self.node = node
-        self.is_def = node.is_definition()
         self.spelling = node.spelling
         self.location: SourceLocation = node.location
         self.extent: SourceRange = node.extent
         self.kind: str = node.kind.name
+        self.is_def: bool = ClangUtil.is_definition(node.kind)
+        self.is_stmt: bool = ClangUtil.is_statement(node.kind)
         self.translation_unit: TranslationUnit =node.translation_unit
         self.unit_path: str = self.translation_unit.spelling
         self.source_code = source_code
@@ -54,6 +57,13 @@ class Cursor:
         #             self.node_source_code = self.unit_source_code
         # except:
         #     print("error ",node.location)
+    def is_definition(self) -> bool:
+        return self.is_def
+
+    def is_statement(self) -> bool:
+        return self.is_statement
+
+
     def get_children(self) -> List['Cursor']:
         return self.child_list
 
