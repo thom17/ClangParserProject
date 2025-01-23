@@ -1,6 +1,6 @@
 # import pytest
-from clangParser.CUnit import CUnit
-from clangParser.Cursor import Cursor
+from clangParser.datas.CUnit import CUnit
+from clangParser.datas.Cursor import Cursor
 import clangParser.clangParser as Parser
 from collections import defaultdict
 import time

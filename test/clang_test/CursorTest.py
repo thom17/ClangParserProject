@@ -1,11 +1,7 @@
-import pytest
-from clangParser.CUnit import CUnit
-from clangParser.Cursor import Cursor
-import clangParser.clangParser as Parser
+from clangParser.datas.CUnit import CUnit
+from clangParser.datas.Cursor import Cursor
 
-from clangParser.ClangRange import ClangRange, RangeRelation
-
-import clangParser.clang_utill as ClangUtil
+from clangParser.datas.ClangRange import ClangRange, RangeRelation
 
 import time
 

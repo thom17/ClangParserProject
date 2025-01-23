@@ -1,5 +1,5 @@
-from code_editor.code_editor import CodeEditor, insert_code_in_block_end, insert_code_in_block_start
-from clangParser.Cursor import Cursor
+from code_editor.code_editor import CodeEditor, insert_code_in_block_start
+from clangParser.datas.Cursor import Cursor
 import clang.cindex as ClangIndex
 
 from typing import Tuple, Optional

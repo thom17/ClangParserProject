@@ -4,10 +4,8 @@
 """
 
 import sys
-import time
-sys.path.append('../')
 
-import os
+sys.path.append('../')
 
 ap_path_list = [
     # r'D:\dev\AutoPlanning\Pano\Pano_pure\mod_APImplantSimulation\UIDlgCrownLibrary.cpp',
@@ -27,7 +25,7 @@ cad_path_list = [
 # print(ed-st)
 
 
-from clangParser.CUnit import CUnit, Cursor
+from clangParser.datas.CUnit import CUnit, Cursor
 import clang.cindex as clangIndex
 unit = CUnit.parse(r'D:\dev\EcoCad\trunk\pure\mod_SCCrownDesign\ToolBarCrownDesign.cpp')
 node_list = [Cursor(node) for node in unit.this_file_nodes]

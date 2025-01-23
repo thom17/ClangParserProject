@@ -4,10 +4,10 @@ from clang.cindex import Cursor as clangCursor
 from clangParser.CursorVisitor import get_visit_def_map
 
 if __name__ == "__main__":
-    from Cursor import Cursor
+    from clangParser.datas.Cursor import Cursor
 
 else:
-    from .Cursor import Cursor
+    from clangParser.datas.Cursor import Cursor
 
 
 class CursorOMS(Cursor):

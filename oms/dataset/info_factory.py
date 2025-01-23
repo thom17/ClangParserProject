@@ -2,9 +2,7 @@ import clang.cindex
 from clang.cindex import Cursor
 import clangParser.clangParser as clangParser
 import clangParser.clang_utill as ClangUtil
-from clangParser.Cursor import Cursor as MyCursor
-from clangParser.CUnit import CUnit
-
+from clangParser.datas.Cursor import Cursor as MyCursor
 
 from oms.info_set import InfoSet
 # from oms.info_set import InfoSet, RelationInfo
@@ -275,7 +273,7 @@ def parsing(cursor_list: List[Cursor], do_update = True) ->Tuple[InfoSet, Dict[s
 
 
 if __name__ == "__main__":
-    from clangParser.CUnit import CUnit
+    from clangParser.datas.CUnit import CUnit
     files = [r'D:\dev\EcoCad\trunk\pure\mod_SCCrownDesign\ToolBarCrownDesign.cpp', r'D:\dev\EcoCad\trunk\pure\mod_SCCrownDesign\UIDlgCrownLibrary.cpp']
     result, clang_src_map=parsing(files)
 

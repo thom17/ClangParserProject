@@ -4,7 +4,7 @@ import clang.cindex as ClangIndex
 
 from clang.cindex  import Cursor as clangCursor, TranslationUnit
 
-from clangParser.Cursor import Cursor
+from clangParser.datas.Cursor import Cursor
 
 
 class CursorVisitor:

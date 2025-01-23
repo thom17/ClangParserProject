@@ -5,7 +5,7 @@ sys.path.append('../')
 
 import clangParser.clangParser as Parser
 
-from clangParser.Cursor import Cursor
+from clangParser.datas.Cursor import Cursor
 
 app = Flask(__name__)
 

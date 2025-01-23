@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from clangParser.CUnit import CUnit, Cursor
+from clangParser.datas.CUnit import CUnit, Cursor
 
-from typing import Union, Dict, List, Optional
+from typing import Union, Dict, Optional
 import chardet
 
 
