@@ -24,8 +24,9 @@ def visit_unit_to_db(unit: CUnit):
 
     save_datas = [unit]
     for child in unit.this_file_nodes:
-        ch = Cursor(child, source_code=unit.code)
-        save_datas.append(ClangCursor.from_cursor(ch))
+        cursor = Cursor(child, source_code=unit.code)
+        cursor_map[cursor] = ClangCursor.from_cursor(cursor)
+        save_datas.append(cursor_map[cursor])
 
     print('save_datas : ', len(save_datas))
 
@@ -36,11 +37,21 @@ def visit_unit_to_db(unit: CUnit):
     db.save_data(save_datas)
     db.print_info()
 
+
     searchs = db.search_node_map(save_datas)
     finds = 0
     for key, nodes in searchs:
         if nodes:
             finds+=1
+    print('clang searchs : ', len(searchs), 'finds : ', finds)
+
+    searchs = db.search_node_map(cursor_map.keys())
+    finds = 0
+    for key, nodes in searchs:
+        if nodes:
+            finds+=1
+    print('cursor searchs : ', len(cursor_map.keys()), 'finds : ', finds)
+
 
     print(len(save_datas), " -> ", finds)
     # Neo4jHandler.save_data(save_datas)

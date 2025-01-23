@@ -5,7 +5,7 @@ from clang.cindex import TranslationUnit
 from clang.cindex import SourceRange
 
 from collections import defaultdict
-from typing import Dict, List, Tuple, Set
+from typing import Dict, List, Tuple, Set, Optional
 
 import clangParser.clang_utill as ClangUtil
 
@@ -44,19 +44,13 @@ class Cursor:
         self.cursor_visitor = CursorVisitor(self)
         self.clang_visitor = self.cursor_visitor
 
+        self.child_cursors: List['Cursor'] = []
+        self.def_node: Optional['Cursor'] = None
 
-        # try:
-        #     if self.unit_path:
-        #         with open(self.unit_path, 'r') as file:
-        #             self.unit_source_code = file.read()
-        #
-        #         if self.location.file:
-        #             with open(self.location.file.name, 'r') as file:
-        #                 self.node_source_code = file.read()
-        #         else:
-        #             self.node_source_code = self.unit_source_code
-        # except:
-        #     print("error ",node.location)
+    def get_children(self) -> List['Cursor']:
+        return self.child_cursors
+
+
     def is_definition(self) -> bool:
         return self.is_def
 

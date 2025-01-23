@@ -16,6 +16,8 @@ import chardet
 
 from clangParser.datas.Cursor import Cursor
 from clangParser.clangParser import parsing, parse_project
+import clangParser.clang_utill as ClangUtill
+import os
 
 class CUnit:
     """
@@ -46,6 +48,26 @@ class CUnit:
         for idx, line in enumerate(line_codes):
             if line.lstrip().startswith('#'):
                 self.preprocessor_line_map[idx+1] = line
+
+    def __str__(self):
+        return f"Unit : {self.file_path} : {self.this_file_nodes.__len__()}"
+    
+    def __repr__(self):
+        return self.__str__()
+    
+    def __eq__(self, other):
+        return self.file_path == other.file_path
+    
+    def __hash__(self):
+        return hash(self.file_path)
+    
+    def to_dict(self):
+        return {
+            "file_path": os.path.normpath(self.file_path),
+            "file_name": self.file_name,
+            "file_extension": self.file_extension,
+            "code": self.code,
+        }
 
     # def get_method_body_in_range(self, start_line, end_line):
     #     '''
