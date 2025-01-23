@@ -1,10 +1,13 @@
 import clang.cindex
 from clang.cindex import Cursor as clangCursor
+
+from clangParser.CursorVisitor import get_visit_def_map
+
 if __name__ == "__main__":
-    from Cursor import Cursor
+    from clangParser.datas.Cursor import Cursor
 
 else:
-    from .Cursor import Cursor
+    from clangParser.datas.Cursor import Cursor
 
 
 class CursorOMS(Cursor):
@@ -52,7 +55,7 @@ class CursorOMS(Cursor):
         #     if node.kind ==
         #         self.has_nodes.add(node)
         self.has_nodes: [clangCursor] = []
-        def_map = self.get_visit_def_map()
+        def_map = get_visit_def_map(self.node)
         for src_name in def_map:
             self.has_nodes.append(def_map[src_name])
             

@@ -1,9 +1,7 @@
 import os.path
 
 from clang.cindex import Cursor as clangCursor
-from clang.cindex import SourceLocation
 from clang.cindex import TranslationUnit
-from clang.cindex import SourceRange
 
 from typing import List, Dict, Tuple, Optional
 
@@ -16,7 +14,7 @@ import chardet
 #     from .Cursor import Cursor
 #     from .clangParser import parsing, parse_project
 
-from clangParser.Cursor import Cursor
+from clangParser.datas.Cursor import Cursor
 from clangParser.clangParser import parsing, parse_project
 
 class CUnit:
@@ -152,7 +150,6 @@ class CUnit:
 
 
 if __name__ == "__main__":
-    import clangParser
     import time
     from simpleVisitor import SimpleVisitor as visitor
     # line_info = r"D:\dev\AutoPlanning\trunk\AP-6979-TimeTask\mod_APScanEdit/CommandToothRemove.cpp:14"
@@ -172,7 +169,7 @@ if __name__ == "__main__":
     method_dec_node = myunit.get_method_body(line_num=321)
     target_my_cursor: Cursor = Cursor(method_dec_node)
 
-    with open("target_code.cpp", "w", encoding="euc-kr") as file:
+    with open("../target_code.cpp", "w", encoding="euc-kr") as file:
         file.write(target_my_cursor.get_range_code())
 
     #라인맵 순환
@@ -211,6 +208,6 @@ if __name__ == "__main__":
     vs = visitor(target_my_cursor.node, r"D:\dev\AutoPlanning\trunk\AP-6979-TimeTask\mod_APImplantSimulation/ActuatorHybridFixture.cpp")
     cmd_code = vs.make_comment_code()
 
-    with open("comment_code.cpp", "w") as file:
+    with open("../comment_code.cpp", "w") as file:
         file.write(cmd_code)
 

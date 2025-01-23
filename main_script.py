@@ -1,6 +1,6 @@
 import sys
 from snResult.ClangAST import *
-from clangParser.Cursor import Cursor
+from clangParser.datas.Cursor import Cursor
 import clangParser.clangParser as Parser
 
 def print_all():
