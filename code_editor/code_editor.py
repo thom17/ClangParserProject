@@ -167,8 +167,8 @@ class CodeEditor:
         return self.__work_code
 
 
-    def add_define(self, insert):
-        if insert in self.__planned_define:
+    def add_define(self, insert, check_dup = True):
+        if check_dup and insert in self.__planned_define:
             return
         else:
             self.__planned_define.append(insert)
