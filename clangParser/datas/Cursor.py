@@ -9,6 +9,8 @@ from typing import Dict, List, Tuple, Set, Optional
 
 import clangParser.clang_utill as ClangUtil
 
+from clangParser.datas.ClangRange import ClangRange
+
 import chardet                  #for py 11
 # import cchardet as chardet
 import os
@@ -27,11 +29,12 @@ class Cursor:
         assert isinstance(node, clangCursor), f"node{type(node)} must be an instance of clang.cindex.Cursor"
         self.node = node
         self.spelling = node.spelling
-        self.location: SourceLocation = node.location
-        self.extent: SourceRange = node.extent
+        self.location: ClangRange = ClangRange(node.location)
+        self.extent: ClangRange = ClangRange(node.extent)
         self.kind: str = node.kind.name
         self.is_def: bool = ClangUtil.is_definition(node.kind)
         self.is_stmt: bool = ClangUtil.is_statement(node.kind)
+
         self.translation_unit: TranslationUnit =node.translation_unit
         self.unit_path: str = self.translation_unit.spelling
         self.source_code = source_code
@@ -44,28 +47,21 @@ class Cursor:
         self.cursor_visitor = CursorVisitor(self)
         self.clang_visitor = self.cursor_visitor
 
-        self.child_cursors: List['Cursor'] = []
+        node.get_definition()
         self.def_node: Optional['Cursor'] = None
-
-    def get_children(self) -> List['Cursor']:
-        return self.child_cursors
-
 
     def is_definition(self) -> bool:
         return self.is_def
 
     def is_statement(self) -> bool:
-        return self.is_statement
+        return self.is_stmt
 
 
     def get_children(self) -> List['Cursor']:
         return self.child_list
 
-    def get_range(self):
-        start: SourceLocation = self.extent.start
-        end: SourceLocation = self.extent.end
-
-        return f"{start.line}:{start.column}~{end.line}:{end.column}"
+    def get_range_str(self):
+        return str(self.extent)
 
     def get_line_size(self) -> int:
         # 해당 커서가 몇 줄인지 반환
@@ -77,29 +73,46 @@ class Cursor:
         return self.line_size
 
     def to_dict(self):
-        # Convert to a dictionary or other JSON-serializable format
-        location = {
-            'file': self.location.file.name if self.location.file else None,
-            'line': self.location.line,
-            'column': self.location.column
-        }
+        return {  
+            'spelling' : self.spelling,
+            'location' : str(self.location),
+            'extent' : str(self.extent),
 
-        start: SourceLocation = self.extent.start
-        end: SourceLocation = self.extent.end
+            'kind' : self.kind,
+            'is_def' : self.is_def,
+            'is_stmt' : self.is_stmt,
 
-        range = {
-            'startLine': start.line,
-            'startColumn': start.column,
-            'endLine': end.line,
-            'endColumn': end.column,
-        }
-        return {
-            'spelling': self.spelling,
-            'kind': self.kind,
-            'range': range,
-            'location': location,
-            'code': self.get_range_code()
-        }
+            'range_code' : self.get_range_code(), #dict 에서 추가
+
+
+            'extent' : self.extent,
+            'line_size' : self.line_size,
+            }
+        
+
+        # # Convert to a dictionary or other JSON-serializable format
+        # location = {
+        #     'file': self.location.file.name if self.location.file else None,
+        #     'line': self.location.line,
+        #     'column': self.location.column
+        # }
+
+        # start: SourceLocation = self.extent.start
+        # end: SourceLocation = self.extent.end
+
+        # range = {
+        #     'startLine': start.line,
+        #     'startColumn': start.column,
+        #     'endLine': end.line,
+        #     'endColumn': end.column,
+        # }
+        # return {
+        #     'spelling': self.spelling,
+        #     'kind': self.kind,
+        #     'range': range,
+        #     'location': location,
+        #     'code': self.get_range_code()
+        # }
 
     def get_in_tab(self) -> str:
         line_code = self.get_range_line_code()

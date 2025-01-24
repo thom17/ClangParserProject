@@ -62,12 +62,12 @@ stmt_map = target_node.get_stmt_map()
 #     print(f"{key.get_line_size()} : {key} {key.get_range()}")
 
 # stmt_map 딕셔너리의 키를 key.get_range() 반환값에 따라 정렬
-sorted_keys = sorted(stmt_map.keys(), key=lambda key: key.get_range())
+sorted_keys = sorted(stmt_map.keys(), key=lambda key: key.get_range_str())
 
 # 정렬된 키를 사용하여 출력
 for key in sorted_keys:
     line_size = key.get_line_size()
-    range_value = key.get_range()
+    range_value = key.get_range_str()
     print(f"{line_size} : {key} {range_value}")
 
 #세미 클론 생략됨. 다 붙어서 나옴. 	_pDlgCrownLibrary->SetToothList(vTooth)_pDlgCrownLibrary->ShowWindow(SW_SHOW)_pDlgCrownLibrary->ShowPreview(true)if (TRUE == _pDlgCrownLibrary->IsWindowVisible())

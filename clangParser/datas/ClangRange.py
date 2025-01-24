@@ -1,10 +1,91 @@
-from clang.cindex import SourceLocation, SourceRange
-from clang.cindex import Cursor as ClangCursor
+import clang.cindex as ClangIndex
 
-
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Tuple
 
 from enum import Enum
+
+from dataclasses import dataclass
+
+@dataclass
+class SourceLocation:
+    '''
+    clang.cindex.SourceLocation를 대체
+    '''
+    
+    line: int
+    column: int
+
+    def from_source(clang_location: ClangIndex.SourceLocation):
+        return SourceLocation(
+            line=clang_location.line,
+            column=clang_location.column
+        )
+
+    def __str__(self):
+        return f"{self.file.name if self.file else ''}:{self.line}:{self.column}"
+
+    def __repr__(self):
+        return str(self)
+
+    def __eq__(self, other):
+        return self.line == other.line and self.column == other.column and self.file == other.file
+    
+    def __float__(self):
+        return float(self.line) + self.column/10000.0
+    
+    def __lt__(self, other):
+        return float(self) < float(other)
+
+
+class ClangRange:
+    '''
+    source_range를 다양하게 활용하기 위해 정의
+    입력된 데이터에서 범위를 추출하여 생성함.
+    즉 Location은 한점이 되고 그외는 SourceRange를 접근하여 할당
+    '''
+
+    def __init__(self, source: Union[ClangIndex.Cursor, ClangIndex.SourceLocation, SourceLocation, Tuple[SourceLocation, SourceLocation]]):
+        self.start: SourceLocation
+        self.end: SourceLocation    
+
+        #입력된 타입에 따라 처리
+        if isinstance(source, ClangIndex.Cursor):
+            self.start = SourceLocation.from_source(source.extent.start)
+            self.end = SourceLocation.from_source(source.extent.end)
+        
+        #range 입력시
+        elif isinstance(source, ClangIndex.SourceRange) or isinstance(source, ClangRange):
+            self.start = SourceLocation.from_source(source.start)
+            self.end = SourceLocation.from_source(source.end)
+
+        #Location이 들어오면 시작과 끝점을 동일하게 처리
+        elif isinstance(source, ClangIndex.SourceLocation) or isinstance(source, SourceLocation):
+            self.start = SourceLocation.from_source(source)
+            self.end = SourceLocation.from_source(source)
+
+        else:
+            self.start = SourceLocation.from_source(source[0])
+            self.end = SourceLocation.from_source(source[1])
+
+        @property
+        def column(self):
+            return self.start.column
+        
+        @property
+        def line(self):
+            return self.start.line
+
+    def get_relation(self, other_range: 'ClangRange') -> 'RangeRelation':
+        return RangeRelation.get_relation(self, other_range)
+
+    def __str__(self):
+        if self.start == self.end:
+            return str(self.start)
+        else:
+            return f"{self.start.line}:{self.start.column}~{self.end.line}:{self.end.column}"
+
+
+
 class RangeRelation(str, Enum):
     NO_INTERSECTION = "⊄"        # A와 B는 서로 겹치지 않음
     IDENTICAL = "≡"              # A와 B는 완전히 동일한 범위
@@ -13,22 +94,13 @@ class RangeRelation(str, Enum):
     B_CONTAINED_IN_A = "⊃"       # B는 A에 포함됨
 
     @staticmethod
-    def get_relation(a: SourceRange, b: SourceRange):
-        def location_to_float(location):
-            """
-            SourceLocation을 float으로 변환합니다.
-            라인 번호는 정수 부분, 컬럼 번호는 소수 부분에 해당합니다.
-            """
-            return float(location.line) + (location.column / 1000.0)
-
+    def get_relation(a: ClangRange, b: ClangRange):
         # 파일이 다른 경우: 서로 겹치지 않음
-        if a.file != b.file:
-            return RangeRelation.NO_INTERSECTION
 
-        a_start = location_to_float(a.start)
-        a_end = location_to_float(a.end)
-        b_start = location_to_float(b.start)
-        b_end = location_to_float(b.end)
+        a_start = float(a.start)
+        a_end = float(a.end)
+        b_start = float(b.start)
+        b_end = float(b.end)
 
 
         # a와 b의 시작과 끝이 모두 동일한 경우: 완전히 동일한 범위
@@ -57,58 +129,4 @@ class RangeRelation(str, Enum):
             return self.A_CONTAINED_IN_B
         else:
             return self.value
-
-class ClangRange:
-    '''
-    source_range를 다양하게 활용하기 위해 정의
-    입력된 데이터에서 범위를 추출하여 생성함.
-    즉 Location은 한점이 되고 그외는 SourceRange를 접근하여 할당
-    '''
-
-    def __init__(self, source: Union[ClangCursor, 'Cursor', SourceLocation, SourceRange]):
-        #MyCursor의 경우 clangCursor로 변경
-        self.file:Optional[str] = None
-
-        if hasattr(source, 'node'):
-            source = source.node
-
-        #입력된 타입에 따라 처리
-        if isinstance(source, ClangCursor):
-            self.source: Optional[ClangCursor] = source
-            if source.location.file:
-                self.file = source.location.file.name
-
-
-            self.start: SourceLocation = source.extent.start
-            self.end: SourceLocation = source.extent.end
-            self.f_start: float = self.start.line + self.start.column / 1000.0
-            self.f_end: float = self.end.line + self.end.column / 1000.0
-
-        elif isinstance(source, SourceRange):
-            if source.start.file:
-                self.file = source.start.file.name
-
-            self.source: Optional[ClangCursor] = None
-            self.start: SourceLocation = source.start
-            self.end: SourceLocation = source.end
-            self.f_start: float = self.start.line + self.start.column/1000.0
-            self.f_end: float = self.end.line + self.end.column/1000.0
-
-        #Location이 들어오면 시작과 끝점을 동일하게 처리
-        elif isinstance(source, SourceLocation):
-            if source.file:
-                self.file = source.file.name
-
-            self.source: Optional[ClangCursor] = None
-            self.start: SourceLocation = source
-            self.end: SourceLocation = source
-            self.f_start: float = self.start.line + self.start.column/1000.0
-            self.f_end: float = self.end.line + self.end.column/1000.0
-
-        self.size = int(self.f_end) - int(self.f_start)
-
-    def get_relation(self, other_range: 'ClangRange') -> RangeRelation:
-        return RangeRelation.get_relation(self, other_range)
-
-
 

@@ -18,8 +18,8 @@ from sympy.physics.units import force
 from typing import Optional
 
 import clangParser.clang_utill as ClangUtill
-from clangParser.Cursor import Cursor
-from clangParser.clang_utill import get_simple_file_name
+from clangParser.datas.Cursor import Cursor
+
 
 
 def calculate_offset(source_code, line, column):
@@ -106,7 +106,7 @@ class ClangCursor:
             spelling=cursor.node.spelling,
             kind=cursor.kind,
             location= str(location.file + ":" + str(location.line) + ":" + str(location.column)),
-            extend=cursor.get_range(),
+            extend=cursor.get_range_str(),
             unit_path=cursor.unit_path,
             is_def=cursor.is_def,
             source_code=cursor.get_range_code(),

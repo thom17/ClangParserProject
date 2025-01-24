@@ -1,5 +1,5 @@
 from clangParser.clangParser import parse_project
-from clangParser.CUnit import CUnit, Cursor
+from clangParser.datas.CUnit import CUnit, Cursor
 
 from neo4jclang.ClangCursor import ClangCursor
 
@@ -25,8 +25,11 @@ def visit_unit_to_db(unit: CUnit):
     save_datas = [unit]
     for child in unit.this_file_nodes:
         cursor = Cursor(child, source_code=unit.code)
+        save_datas.append(cursor) #Cursor 저장
+
         cursor_map[cursor] = ClangCursor.from_cursor(cursor)
-        save_datas.append(cursor_map[cursor])
+        save_datas.append(cursor_map[cursor]) #clangIndex.Cusor 저장
+
 
     print('save_datas : ', len(save_datas))
 

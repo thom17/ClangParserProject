@@ -20,7 +20,7 @@ def print_line(ast_set):
     for num in sorted(line_map):
         print(num, end=" ")
         for c in line_map[num]:
-            print(f"<{c.kind} {c.spelling} {c.get_range()}>", end=" ")
+            print(f"<{c.kind} {c.spelling} {c.get_range_str()}>", end=" ")
         print()
 
 def print_a_line(ast_set, line_num):
@@ -30,7 +30,7 @@ def print_a_line(ast_set, line_num):
         return "None"
     print(line_num, end=" ")
     for c in line_map[line_num]:
-        print(f"<{c.kind} {c.spelling} {c.get_range()}>", end=" ")
+        print(f"<{c.kind} {c.spelling} {c.get_range_str()}>", end=" ")
 
 
 
