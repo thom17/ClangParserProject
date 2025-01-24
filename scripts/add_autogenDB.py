@@ -8,13 +8,13 @@ import os
 from typing import Tuple, Optional, Dict
 
 
-from clangParser.Cursor import Cursor
+from clangParser.datas.Cursor import Cursor
 import clang.cindex as ClangIndex
 import tkinter as tk
 from tkinter import filedialog
 
 import clangParser.clangParser as ClangParser
-from clangParser.CUnit import CUnit
+from clangParser.datas.CUnit import CUnit
 from code_editor.code_editor import CodeEditor, insert_code_in_block_start
 
 def get_file_list():

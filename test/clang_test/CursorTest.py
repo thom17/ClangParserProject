@@ -1,14 +1,47 @@
-# import pytest
-from clangParser.CUnit import CUnit
-from clangParser.Cursor import Cursor
-import clangParser.clangParser as Parser
+from clangParser.datas.CUnit import CUnit
+from clangParser.datas.Cursor import Cursor
 
-from clangParser.ClangRange import ClangRange, RangeRelation
+from clangParser.datas.ClangRange import ClangRange, RangeRelation
+
+import time
+
+def test_unit_cursor_gen_time():
+    '''
+    Cursor 에서 child_list를 추가함( 기본적으로 visit이 항상 수행)
+    이로 인한 메서드별 시간 측정.
+    '''
+    file_path = r'D:\dev\EcoCad\trunk\pure\mod_SCWorkspace\UIDlgWorklistMain.cpp'
+    my_unit = CUnit.parse(file_path=file_path)
+    cursor_list: list[Cursor] = []
+    for node in my_unit.this_file_nodes:
+        st_time = time.time()
+        my_cursor = Cursor(node, my_unit.code)
+        ed_time = time.time()
+        print(f'{my_cursor.get_src_name()} {my_cursor.get_line_size()} (size) : {ed_time - st_time} sec')
+        cursor_list.append(my_cursor)
+    return cursor_list
+def test_visitor():
+    cursor_list = test_unit_cursor_gen_time()
+    for cursor in cursor_list:
+        visitor = cursor.cursor_visitor
+        visitor.get_stmt_list()
+        visitor.get_stmt_map()
+        visitor.get_visit_type_map()
+
+        visitor.get_visit_line_size_map()
+        visitor.get_visit_line_map()
+
+        visitor.get_visit_def_map()
+
+        visitor.get_visit_unit_map()
+
+        visitor.visit_nodes()
+
 
 def test_get_visit_line_call_map():
     print(test_get_visit_line_call_map)
 
-    file_path = r'D:\dev\AutoPlanning\trunk\AP_trunk_pure\mod_APImplantSimulation\UIDlgImplantLib.cpp'
+    file_path = r'D:\dev\AutoPlanning\trunk\AP_trunk_pure\mod_APImplantSimulation\CUIDlgWorklistMain.cpp'
     my_unit = CUnit.parse(file_path=file_path)
     node = my_unit.get_method_body(2222)
     my_cursor = Cursor(node)

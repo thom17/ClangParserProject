@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
 import logging
 import sys
 sys.path.append('../')
@@ -7,9 +7,9 @@ import urllib.parse #파일경로는 인코딩되서 온다
 
 from clang.cindex import Cursor as clangCursor
 
-from clangParser.CUnit import CUnit
-from clangParser.Cursor import Cursor
-from clangParser.CursorOMS import CursorOMS
+from clangParser.datas.CUnit import CUnit
+from clangParser.datas.Cursor import Cursor
+from clangParser.datas.CursorOMS import CursorOMS
 
 app = Flask(__name__)
 

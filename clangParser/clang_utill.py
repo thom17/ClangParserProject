@@ -1,9 +1,62 @@
+import clang.cindex as ClangIndex
 from clang.cindex import Cursor as clangCursor
 from clang.cindex import Token, CursorKind, TokenKind
 
 from collections import defaultdict
 
-from typing import List, Union
+from typing import List, Union, Dict
+
+
+
+CLANG_KIND_LIST :List[ClangIndex.CursorKind] = [kind for kind in CursorKind.get_all_kinds()]
+CLANG_KIND_TYPE_MAP:Dict = defaultdict(set)
+
+# CLANG_KIND_TYPE_MAP 설정
+for kind in CLANG_KIND_LIST:
+    if kind.is_attribute():
+        CLANG_KIND_TYPE_MAP['attribute'].add(kind)
+    if kind.is_declaration():
+        CLANG_KIND_TYPE_MAP['declaration'].add(kind)
+    if kind.is_expression():
+        CLANG_KIND_TYPE_MAP['expression'].add(kind)
+    if kind.is_preprocessing():
+        CLANG_KIND_TYPE_MAP['preprocessing'].add(kind)
+    if kind.is_reference():
+        CLANG_KIND_TYPE_MAP['reference'].add(kind)
+    if kind.is_statement():
+        CLANG_KIND_TYPE_MAP['statement'].add(kind)
+    if kind.is_translation_unit():
+        CLANG_KIND_TYPE_MAP['translation_unit'].add(kind)
+    if kind.is_unexposed():
+        CLANG_KIND_TYPE_MAP['unexposed'].add(kind)
+    if kind.is_invalid():
+        CLANG_KIND_TYPE_MAP['invalid'].add(kind)
+CLANG_KIND_TYPE_MAP = dict(CLANG_KIND_TYPE_MAP)
+
+
+def is_definition(kind: Union[str, CursorKind]) -> bool:
+    if isinstance(kind, CursorKind):
+        return kind.is_declaration()
+    
+    elif isinstance(kind, str):
+        for kind in CLANG_KIND_TYPE_MAP['definition']:
+            if kind.name == kind:
+                return True
+        return False
+    else:
+        raise TypeError(f"CursorKind 혹은 str만 가능합니다. {type(kind)} 입력됨")
+
+def is_statement(kind: Union[str, CursorKind]) -> bool:
+    if isinstance(kind, CursorKind):
+        return kind.is_statement()
+    
+    elif isinstance(kind, str):
+        for kind in CLANG_KIND_TYPE_MAP['statement']:
+            if kind.name == kind:
+                return True
+        return False
+    else:
+        raise TypeError(f"CursorKind 혹은 str만 가능합니다. {type(kind)} 입력됨")
 
 
 def to_clang(cursor:Union['Cursor', clangCursor]) -> clangCursor:
