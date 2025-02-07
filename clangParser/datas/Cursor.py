@@ -352,41 +352,41 @@ class Cursor:
 
 
     def get_visit_line_token_map(self, node = None)->dict[int, [clang.cindex.Token]]:
-        return self.visitor.get_visit_line_token_map()
+        return self.cursor_visitor.get_visit_line_token_map()
 
     def get_visit_kind_token_map(self, node = None)->dict[str, [clang.cindex.Token]]:
-        return self.visitor.get_visit_kind_token_map()
+        return self.cursor_visitor.get_visit_kind_token_map()
 
 
     def get_visit_line_map(self) -> Dict[int, List['Cursor']]:
-        return self.visitor.get_visit_line_map()
+        return self.cursor_visitor.get_visit_line_map()
 
     def get_file_map(self) -> Dict[str, List['Cursor']]:
-        return self.visitor.get_file_map()
+        return self.cursor_visitor.get_file_map()
 
     def get_visit_type_map(self) -> Dict[str, List['Cursor']]:
-        return self.visitor.get_visit_type_map()
+        return self.cursor_visitor.get_visit_type_map()
 
     def get_stmt_list(self) -> List['Cursor']:
-        return self.visitor.get_stmt_list()
+        return self.cursor_visitor.get_stmt_list()
 
     def get_stmt_map(self) -> Dict['Cursor', List['Cursor']]:
-        return self.visitor.get_stmt_map()
+        return self.cursor_visitor.get_stmt_map()
 
     def get_visit_line_size_map(self) -> dict[int, ['Cursor']]:
-        return self.visitor.get_visit_line_size_map()
+        return self.cursor_visitor.get_visit_line_size_map()
 
     def visit_print(self):
-        self.visitor.visit_print()
+        self.cursor_visitor.visit_print()
 
     def visit_nodes(self) -> List[clangCursor]:
-        return self.visitor.visit_nodes()
+        return self.cursor_visitor.visit_nodes()
 
     def get_visit_unit_map(self) -> Dict[TranslationUnit, List['Cursor']]:
-        return self.visitor.get_visit_unit_map()
+        return self.cursor_visitor.get_visit_unit_map()
 
     def get_visit_line_size_map(self) -> dict[int, ['Cursor']]:
-        return self.visitor.get_visit_line_size_map()
+        return self.cursor_visitor.get_visit_line_size_map()
 
 
 
