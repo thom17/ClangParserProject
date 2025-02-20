@@ -5,7 +5,11 @@ from datetime import datetime
 
 target_compile_command = r"D:\dev\AutoPlanning\trunk\AP-6979-TimeTask"
 
-clang.cindex.Config.set_library_file(r"C:\Program Files\LLVM\bin\libclang.dll")
+try:
+    clang.cindex.Config.set_library_file(r"C:\Program Files\LLVM\bin\libclang.dll")
+except Exception as e:
+    print("libclang.dll 설정 실패")
+    print(e)
 
 msvc_include_path = r'C:/dev/VS2019 Professional/IDE/VC/Tools/MSVC/14.29.30133/include'
 windows_sdk_include_paths = [
