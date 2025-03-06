@@ -1,29 +1,26 @@
-from clang.cindex import Cursor as clangCursor
+'''
+2025-01-17
+만들던 당시에는 clang 만 사용하려고 했지만
+clangParser.Cursor와 같이 사용해서 DB 화 하는것이 맞다고 판단됨.
+Best는 clangParser.Curosr를 리팩토링 하는것이지만... 일단 이대로 진행
+'''
+import clang.cindex as ClangIndex
+
 from clang.cindex import TranslationUnit, CursorKind
 from clang.cindex import SourceLocation as ClangSourceLocation
 from clang.cindex import SourceRange as ClangSourceRange
 from clang.cindex import CursorKind
+
 import os
 
 from dataclasses import dataclass, asdict, field
 from sympy.physics.units import force
 from typing import Optional
 
+import clangParser.clang_utill as ClangUtill
+from clangParser.Cursor import Cursor
+from clangParser.clang_utill import get_simple_file_name
 
-def get_simple_file_name(path: str):
-    # 경로를 표준화합니다.
-    normalized_path = os.path.normpath(path)
-
-    # 경로를 구성하는 파트들을 리스트로 분리합니다.
-    parts = normalized_path.split(os.sep)
-
-    # 마지막 파일 이름과 그 바로 상위 디렉토리만 포함하도록 조정합니다.
-    if len(parts) > 1:
-        result_path = os.path.join(parts[-2], parts[-1])
-    else:
-        result_path = parts[-1]  # 파일 또는 폴더만 있는 경우
-
-    return result_path
 
 def calculate_offset(source_code, line, column):
     """
@@ -76,10 +73,8 @@ class SourceRange:
 @dataclass
 class ClangCursor:
     """
-    clangParser.Cursor 복사
-    clang.cindex.Cursor 가 불편해서 정의
+    Cursor를 DB에 저장하기 위한 클래스
     """
-    id : int
     spelling: str
     kind: str
     location: str
@@ -87,30 +82,41 @@ class ClangCursor:
     unit_path: str
     is_def: bool
     source_code: Optional[str] = None
-    src_name: Optional[str] = None
+    src_name: str = None
 
-    s_id : int = 0
     @staticmethod
-    def from_clang(node: clangCursor):
+    def from_clang(node: ClangIndex.Cursor):
         location = SourceLocation.from_clang(node.location)
         return ClangCursor(
             spelling=node.spelling,
             kind=node.kind.name,
             location= str(location.file + ":" + str(location.line) + ":" + str(location.column)),
-            extend=ClangCursor.get_extnd_str(node.extent),
+            extend=ClangIndex.Cursor.get_extnd_str(node.extent),
             unit_path=node.translation_unit.spelling,
             is_def=node.is_definition(),
-            source_code=ClangCursor.get_range_code(node),
-            src_name=ClangCursor.get_src_name(node),
-            id=ClangCursor.s_id
+            source_code=ClangIndex.Cursor.get_range_code(node),
+            src_name=ClangIndex.Cursor.get_src_name(node),
+            id=ClangIndex.Cursor.s_id
         )
+    
+    @staticmethod
+    def from_cursor(cursor: Cursor):
+        location = SourceLocation.from_clang(cursor.location)
+        return ClangCursor(
+            spelling=cursor.node.spelling,
+            kind=cursor.kind,
+            location= str(location.file + ":" + str(location.line) + ":" + str(location.column)),
+            extend=cursor.get_range(),
+            unit_path=cursor.unit_path,
+            is_def=cursor.is_def,
+            source_code=cursor.get_range_code(),
+            src_name=cursor.get_src_name(),
+        )
+
 
     def to_dict(self):
         return asdict(self)
 
-    def __post_init__(self):
-        # 클래스 속성 증가
-        ClangCursor.s_id += 1
     @staticmethod
     def get_extnd_str(extend):
         start: SourceLocation = extend.start
@@ -144,17 +150,17 @@ class ClangCursor:
             return ClangCursor.get_src_name(node.semantic_parent) + "." + node.displayname #display가 sig로 나오는듯
 
     @staticmethod
-    def get_type_def_arg(node: clangCursor):
+    def get_type_def_arg(node: ClangIndex.Cursor):
         result = "("
         for param_dec in node.get_arguments():
             # Identifier 제거
-            result += ", " + ClangCursor.get_range_code(param_dec).replace(" " + param_dec.spelling, "")
+            result += ", " + ClangIndex.Cursor.get_range_code(param_dec).replace(" " + param_dec.spelling, "")
         result += ")"
         return result.replace("(, ", "(")
 
     @staticmethod
     def get_method_sig(node):
-        return node.spelling +ClangCursor.get_type_def_arg(node)
+        return node.spelling +ClangIndex.Cursor.get_type_def_arg(node)
 
 
 
@@ -178,11 +184,11 @@ class ClangCursor:
             queue[:0] = node.get_children()
         return dec_list
 
-    def get_call_definition_map(self, target_stmt= ["CALL_EXPR", "MEMBER_REF_EXPR", "DECL_REF_EXPR", "UNEXPOSED_EXPR"])->dict[clangCursor, clangCursor]:
+    def get_call_definition_map(self, target_stmt= ["CALL_EXPR", "MEMBER_REF_EXPR", "DECL_REF_EXPR", "UNEXPOSED_EXPR"])->dict[ClangIndex.Cursor, ClangIndex.Cursor]:
         """
         DFS로 target_stmt의 defintion node를 구한다.
         :param target_stmt:
-        :return dec_dict: [call_node: clangCursor, def_node: clangCursor]
+        :return dec_dict: [call_node: ClangIndex.Cursor, def_node: ClangIndex.Cursor]
         """
         dec_dict: ['Cursor' 'Cursor'] = {}
         queue = [self.node]
@@ -334,7 +340,7 @@ class ClangCursor:
             childs = [(child, new_lv) for child in node.get_children()]
             queue = childs + queue
 
-    def visit_nodes(self)->[clangCursor]:
+    def visit_nodes(self)->[ClangIndex.Cursor]:
         visit_list: ['Cursor'] = []
         queue = [self.node]
 
@@ -416,7 +422,7 @@ def get_cursor(cursor)->ClangCursor:
         assert (cursor_map[cursor.node] == cursor), "cursor map 오류"
         return cursor
     else:
-        assert isinstance(cursor, clangCursor), f"타입 오류 {type(cursor)}"
+        assert isinstance(cursor, ClangIndex.Cursor), f"타입 오류 {type(cursor)}"
         if cursor in cursor_map:
             return cursor_map[cursor]
         else:
