@@ -69,38 +69,53 @@ import difflib
 from typing import List
 
 def make_added_include(unit:CUnit, include_code: str)->str:
-    def find_most_similar(str_list: List[str], data: str) -> str:
-        # get_close_matches는 리스트에서 가장 유사한 문자열을 찾습니다.
-        # n=1은 가장 유사한 하나의 결과만 반환하도록 설정
-        # cutoff=0은 모든 유사도 수준을 허용
-        matches = difflib.get_close_matches(data, str_list, n=1, cutoff=0)
-        if matches:
-            return matches[0]
-        else:
-            return None  # 유사한 문자열이 없는 경우
-
-
-    dec_map:dict = {}
-    last_pos_line = 1
-    #그냥 unit 측에서 include, define은 따로 저장해야겠다. (#에서도 분류를 해야할듯)
+    ## Unit의 첫 커서 보다 위에 있는 마지막 include 찾기
+    first_cursor_line = 99999999 #첫 커서 라인 ( 아마도 메서드)
+    for cursor in unit.get_this_Cursor():
+        if cursor.location.line < first_cursor_line:
+            first_cursor_line = cursor.location.line
+    max_include_line = 0
     for line_num, code in sorted(unit.preprocessor_line_map.items()):
-        if include_code in code:
-            return unit.code #정의 된 경우 변화 x
-        elif '#include ' in code:
-            dec_map[code] = line_num
+        if code == include_code and line_num < first_cursor_line:
+            return unit.code
+        elif "#include" in code and line_num < first_cursor_line:
+            max_include_line = line_num
 
-            #마지막 include 라인 갱신
-            if last_pos_line < line_num:
-                last_pos_line = line_num
+    change_index = max_include_line - 1
 
-    sim_text = find_most_similar(list(dec_map.keys()), include_code)
-
-    #유사한 택스트나 마지막 위치로 인덱스 저장
-    if sim_text:
-        change_index = dec_map[sim_text] - 1
-    else:
-        change_index = last_pos_line - 1
-
+    # #기존 방법. 유사한 include 문 찾아서 추가 ( 패키지 추적)
+    # def find_most_similar(str_list: List[str], data: str) -> str:
+    #     # get_close_matches는 리스트에서 가장 유사한 문자열을 찾습니다.
+    #     # n=1은 가장 유사한 하나의 결과만 반환하도록 설정
+    #     # cutoff=0은 모든 유사도 수준을 허용
+    #     matches = difflib.get_close_matches(data, str_list, n=1, cutoff=0)
+    #     if matches:
+    #         return matches[0]
+    #     else:
+    #         return None  # 유사한 문자열이 없는 경우
+    #
+    #
+    # dec_map:dict = {}
+    # last_pos_line = 1
+    # #그냥 unit 측에서 include, define은 따로 저장해야겠다. (#에서도 분류를 해야할듯)
+    # for line_num, code in sorted(unit.preprocessor_line_map.items()):
+    #     if include_code in code:
+    #         return unit.code #정의 된 경우 변화 x
+    #     elif '#include ' in code:
+    #         dec_map[code] = line_num
+    #
+    #         #마지막 include 라인 갱신
+    #         if last_pos_line < line_num:
+    #             last_pos_line = line_num
+    #
+    # sim_text = find_most_similar(list(dec_map.keys()), include_code)
+    #
+    # #유사한 택스트나 마지막 위치로 인덱스 저장
+    # if sim_text:
+    #     change_index = dec_map[sim_text] - 1
+    # else:
+    #     change_index = last_pos_line - 1
+    #
     code_lines = unit.code.splitlines()
     code_lines[change_index] = code_lines[change_index] + '\n' + include_code
     return '\n'.join(code_lines)
