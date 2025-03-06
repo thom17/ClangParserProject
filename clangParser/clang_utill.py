@@ -112,8 +112,9 @@ def __is_root_node(node: clangCursor):
 
 def __get_exp_name(node: clangCursor):
     # 연산과 관련된 식
-    return node.kind.name+"(" + node.spelling + "):" + str(node.location.line)
-
+    extent = node.extent
+    range_str = f"{extent.start.line}:{extent.start.column}~{extent.end.line}:{extent.end.column}"
+    return node.kind.name + "(" + range_str + ")"
 
 def __get_def_name(node: clangCursor):
     # 메서드의 경우

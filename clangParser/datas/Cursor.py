@@ -20,13 +20,13 @@ import os
 
 
 class Cursor:
-
     """
     clang.cindex.Cursor 가 불편해서 정의
     """
 
     def __init__(self, node: clangCursor, source_code: str = None):
         assert isinstance(node, clangCursor), f"node{type(node)} must be an instance of clang.cindex.Cursor"
+        self.src_name = ClangUtil.get_src_name(node)
         self.node = node
         self.spelling = node.spelling
         self.location: ClangRange = ClangRange(node.location)
@@ -39,16 +39,28 @@ class Cursor:
         self.unit_path: str = self.translation_unit.spelling
         self.source_code = source_code
         self.line_size = None
-        
         self.line_size = self.get_line_size()
         self.child_list: List['Cursor'] = [Cursor(child, source_code) for child in node.get_children()]
+
+        self.parent: Optional['Cursor'] = None
+        for child in self.child_list:
+            child.parent = self
 
         from clangParser.CursorVisitor import CursorVisitor
         self.cursor_visitor = CursorVisitor(self)
         self.clang_visitor = self.cursor_visitor
 
-        node.get_definition()
         self.def_node: Optional['Cursor'] = None
+        # if node.get_definition():
+        #     self.def_node = Cursor(node.get_definition())
+
+    def __eq__(self, other):
+        if isinstance(other, Cursor):
+            return self.get_src_name() == other.get_src_name()
+        return False
+
+    def __hash__(self):
+        return hash(self.get_src_name())
 
     def is_definition(self) -> bool:
         return self.is_def
@@ -82,11 +94,10 @@ class Cursor:
             'is_def' : self.is_def,
             'is_stmt' : self.is_stmt,
 
-            'range_code' : self.get_range_code(), #dict 에서 추가
-
-
-            'extent' : self.extent,
             'line_size' : self.line_size,
+
+            'src_name' : self.get_src_name(),   #dict 에서 추가
+            'range_code' : self.get_range_code(), #dict 에서 추가
             }
         
 
@@ -153,9 +164,20 @@ class Cursor:
             result_search[line] = node_list
         return result_search
 
+    def get_def_parent(self) -> Optional['Cursor']:
+        parent = self.parent
+        while parent and not parent.is_definition():
+            parent = parent.parent
+        return parent
+
+    def get_stmt_parent(self) -> Optional['Cursor']:
+        parent = self.parent
+        while parent and not parent.is_stmt:
+            parent = parent.parent
+        return parent
 
 
-    def get_src_name(self, node=None):
+    def get_src_name(self):
         """
         그 srcName
         클래스.메서드.메서드.변수, 파일.변수, 파일.매서드
@@ -163,15 +185,23 @@ class Cursor:
         :return:
         """
 
-        if node is None:
-            node = self.node
+        #파라미터 선언문, 혹은 메서드, 클래스
+        is_cls_or_method_child = self.parent == None or self.parent.kind in ['CLASS_DECL', 'CXX_METHOD', 'FUNCTION_DECL']
 
-        assert node, "Node is null"
+        if self.is_def and is_cls_or_method_child:
+            return ClangUtil.get_src_name(self.node)
+        else:
+            def_parent = self.get_stmt_parent()
+            if def_parent:
+                return def_parent.get_src_name() + "." + self.src_name
+            else:
+                return self.unit_path+"." + self.src_name
 
-        return ClangUtil.get_src_name(node)
 
-
-
+        if self.parent is None:
+            return self.src_name
+        else:
+            return self.parent.get_src_name() + "." + self.src_name
 
     def get_call_definition(self, target_stmt= None):
         """

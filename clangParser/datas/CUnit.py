@@ -31,7 +31,8 @@ class CUnit:
     def __init__(self, unit: TranslationUnit):
         self.unit: TranslationUnit = unit
         self.file_path: str = unit.spelling
-        self.file_name, self.file_extension = os.path.splitext(self.file_path)
+        self.file_extension = os.path.splitext(self.file_path)[1]
+        self.file_name = os.path.basename(self.file_path)
         self.this_file_nodes: List[clangCursor] = []
         self.code: str = self.read_file()
         self.preprocessor_line_map: Dict[int, str] = {}
@@ -63,7 +64,7 @@ class CUnit:
     
     def to_dict(self):
         return {
-            "file_path": os.path.normpath(self.file_path),
+            "file_path": self.file_path,
             "file_name": self.file_name,
             "file_extension": self.file_extension,
             "code": self.code,

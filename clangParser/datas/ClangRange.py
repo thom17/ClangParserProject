@@ -22,13 +22,13 @@ class SourceLocation:
         )
 
     def __str__(self):
-        return f"{self.file.name if self.file else ''}:{self.line}:{self.column}"
+        return f"{self.line}:{self.column}"
 
     def __repr__(self):
         return str(self)
 
     def __eq__(self, other):
-        return self.line == other.line and self.column == other.column and self.file == other.file
+        return self.line == other.line and self.column == other.column
     
     def __float__(self):
         return float(self.line) + self.column/10000.0
