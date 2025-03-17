@@ -1,10 +1,6 @@
 from typing import Optional, List
 from oms.dataset.function_info import FunctionInfo
 
-
-
-
-
 class FlowAST:
     def __init__(self):
         self.kind: Optional[str] = None
@@ -18,7 +14,7 @@ class FlowAST:
 
         self.next_flow: Optional['FlowAST'] = None
 
-        self.extended_info: Optional['FlowAST'] = None
+        self.extended_info: Optional['FlowInfo'] = None
 
     def set_next_flow(self, next_flow: 'FlowAST'):
         assert next_flow is not None, "next_flow cannot be None"
@@ -31,11 +27,17 @@ class FlowAST:
         for parent in parents:
             parent.next_flow = self
 
-class IfFlowInfo:
+
+
+class FlowInfo:
     def __init__(self, flowAST: FlowAST):
         self.flowAST = flowAST
         flowAST.extended_info = self
-    
+
+
+class IfFlowInfo(FlowInfo):
+    def __init__(self, flowAST: FlowAST):
+        super().__init__(flowAST)
         self.condition: Optional[FlowAST] = None
         self.else_flow: Optional[FlowAST] = None
 

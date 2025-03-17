@@ -2,7 +2,9 @@ from oms.dataset.flowAST.flowAST import FlowAST, IfFlowInfo
 from clangParser.datas.Cursor import Cursor
 from typing import List
 
-def from_cursor(cursor: Cursor, flow_ast: FlowAST) -> FlowAST:
+def from_cursor(cursor: Cursor, flow_ast: FlowAST = None) -> FlowAST:
+    if flow_ast is None:
+        flow_ast = FlowAST()
     flow_ast.kind = cursor.kind
     flow_ast.line = cursor.location.line
     flow_ast.column = cursor.location.column
@@ -60,7 +62,7 @@ class CursorVisitor:
             from_cursor(cursor=if_stmt_cursor, flow_ast=current_flowAST)
 
             extended_info = IfFlowInfo(current_flowAST)
-            extended_info.condition = from_cursor(condition_cursor, current_flowAST)
+            extended_info.condition = from_cursor(condition_cursor)
             
             #if then 연결
             then_flow = FlowAST()
