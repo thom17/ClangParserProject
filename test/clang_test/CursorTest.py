@@ -128,6 +128,70 @@ def test_range_map():
     map = visit_make_range_map(node)
     print(len(map))
 
+
+def test_enable_parse_std():
+    '''
+    for (auto pair : _bvhDataMap) std::map<CString, ST_CONFLICT_DATASET>
+    위와 같은 구문을 분석이 되는지 체크. -> 해당파일에 include를 선언 해주어도 파싱 x
+    '''
+    #
+    conflict_path = r'D:\dev\AutoPlanning\trunk\AP_trunk_pure\AppCommon_AP\ExtractorConflict.cpp'
+    my_unit = CUnit.parse(file_path=conflict_path)
+    extractorConflict = Cursor(my_unit.get_method_body(543))
+    block = extractorConflict.get_children()[2]
+    print()
+    print(block.get_range_code())
+    for ch in block.get_children():
+        print(ch)
+    assert len(block.get_children()) == 4, 'for 분석 안됨'
+
+def test_enable_parse_for_size():
+    '''
+    for (int i = 0; i < vStr.size() - 1; i++)
+    위와 같은 구문은 분석 가능. vStr.size()는 UnExposed 일수도 있으나
+    '''
+    conflict_path = r'D:\dev\AutoPlanning\trunk\AP_trunk_pure\AppCommon_AP\ExtractorConflict.cpp'
+    my_unit = CUnit.parse(file_path=conflict_path)
+    GetHitNames = Cursor(my_unit.get_method_body(484))
+    block = GetHitNames.get_children()[3]
+    block = block.get_children()[5].child_list[1]
+    print()
+    print(block.get_range_code())
+    for ch in block.get_children():
+        print(ch)
+    assert len(block.get_children()) == 2, 'for 분석 안됨'
+
+def test_enable_parse_for_tooth():
+    '''
+for (auto i : listTooth)
+    위와 같은 구문은 분석 가능. vStr.size()는 UnExposed 일수도 있으나
+    '''
+    conflict_path = r'D:\dev\AutoPlanning\trunk\AP_trunk_pure\AppCommon_AP\ToolbarModuleBase.cpp'
+    my_unit = CUnit.parse(file_path=conflict_path)
+    GetVisibleCrown = Cursor(my_unit.get_method_body(969))
+    block = GetVisibleCrown.get_children()[1]
+    print(block.get_range_code())
+    for ch in block.get_children():
+        print(ch)
+    assert len(block.get_children()) == 2, 'for 분석 안됨'
+
+
+def test_enable_parse():
+    temp_path = (r'D:\temp\target\data\test_cpp.cpp')
+    my_unit = CUnit.parse(file_path=temp_path)
+    main = Cursor(my_unit.get_method_body(4))
+    block = main.get_children()[0]
+    print()
+    print(block.get_range_code())
+    for ch in block.get_children():
+        print(ch)
+    # assert len(block.get_children()) == 4, 'for 분석 안됨'
+
+    print('-=-' * 10)
+    for ch in block.get_children()[2].get_children():
+        print(ch)
+
+
 def visit_make_range_map(cursor: Cursor):
     node_map = defaultdict(lambda: defaultdict(list))
     node_li = get_visit_all_nodes(cursor)
