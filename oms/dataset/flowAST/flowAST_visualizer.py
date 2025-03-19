@@ -4,7 +4,8 @@ Claude 3.7 sonnet을 사용하여 생성한 코드.
 '''
 from typing import Dict, Set
 import graphviz
-from oms.dataset.flowAST.flowAST import FlowAST, FlowInfo, IfFlowInfo
+from oms.dataset.flowAST.flowAST import FlowAST, FlowInfo, IfFlowInfo, WhileFlowInfo
+
 
 class FlowASTVisualizer:
     def __init__(self):
@@ -86,6 +87,17 @@ class FlowASTVisualizer:
                 self.graph.edge(node_id, else_id, label='else', color='red', style='dashed')
                 self._build_graph(if_info.else_flow)
 
+        # While 문 처리
+        elif isinstance(ast.extended_info, WhileFlowInfo):
+            while_info = ast.extended_info
+
+            # 조건문 시각화
+            if while_info.condition:
+                cond_id = self.add_node(while_info.condition)
+                self.graph.edge(node_id, cond_id, label='condition', color='green', style='dashed')
+                self._build_graph(while_info.condition)
+
+
 def visualize_flow_ast(ast: FlowAST, output_file: str = "flow_ast"):
     """FlowAST를 시각화하는 편의 함수"""
     visualizer = FlowASTVisualizer()
@@ -100,6 +112,7 @@ if __name__ == "__main__":
     root.code = "void example() { ... }"
     root.line = 1
 
+    # If 문 예제
     if_node = FlowAST()
     if_node.kind = "if"
     if_node.code = "if (x > 0)"
@@ -124,9 +137,30 @@ if __name__ == "__main__":
     else_block.line = 5
     if_info.else_flow = else_block
 
+    # While 문 예제
+    while_node = FlowAST()
+    while_node.kind = "while"
+    while_node.code = "while (i < 10)"
+    while_node.line = 7
+
+    while_info = WhileFlowInfo(while_node)
+
+    while_condition = FlowAST()
+    while_condition.kind = "condition"
+    while_condition.code = "i < 10"
+    while_condition.line = 7
+    while_info.condition = while_condition
+
+    while_body = FlowAST()
+    while_body.kind = "statement"
+    while_body.code = "i++;"
+    while_body.line = 8
+
     # 흐름 연결
     root.set_next_flow(if_node)
     if_node.set_next_flow(then_block)
+    then_block.set_next_flow(while_node)
+    while_node.set_next_flow(while_body)
 
     # 시각화
     visualize_flow_ast(root, "example_flow")

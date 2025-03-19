@@ -82,7 +82,7 @@ class Cursor:
             self.line_size = end.line - start.line + 1
         return self.line_size
 
-    def to_dict(self):
+    def to_dict_for_json(self):
         # Convert to a dictionary or other JSON-serializable format
         location = {
             'file': self.location.file.name if self.location.file else None,
@@ -106,6 +106,22 @@ class Cursor:
             'location': location,
             'code': self.get_range_code()
         }
+    
+    def to_dict(self):
+        return {  
+            'spelling' : self.spelling,
+            'location' : str(self.location),
+            'extent' : str(self.extent),
+
+            'kind' : self.kind,
+            'is_def' : self.is_def,
+            'is_stmt' : self.is_stmt,
+
+            'line_size' : self.line_size,
+
+            'src_name' : self.get_src_name(),   #dict 에서 추가
+            'range_code' : self.get_range_code(), #dict 에서 추가
+            }
 
     def get_in_tab(self) -> str:
         line_code = self.get_range_line_code()

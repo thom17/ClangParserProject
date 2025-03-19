@@ -1,4 +1,4 @@
-from oms.dataset.flowAST.flowAST import FlowAST, IfFlowInfo
+from oms.dataset.flowAST.flowAST import FlowAST, IfFlowInfo, WhileFlowInfo
 from clangParser.datas.Cursor import Cursor
 from typing import List
 
@@ -60,23 +60,56 @@ class CursorVisitor:
             else_cursor = childs[2] if len(childs) == 3 else None
 
             from_cursor(cursor=if_stmt_cursor, flow_ast=current_flowAST)
+            self.cursor2node[if_stmt_cursor] = current_flowAST
 
             extended_info = IfFlowInfo(current_flowAST)
             extended_info.condition = from_cursor(condition_cursor)
+            self.cursor2node[condition_cursor] = extended_info.condition
             
             #if then 연결
             then_flow = FlowAST()
             current_flowAST.set_next_flow(then_flow)
             then_end_node = self.visit(current_flowAST=then_flow, visit_que_cursor=[then_cursor]) # 기존 que 이전에 if 내부 먼저 처리
 
+            else_flow = FlowAST()
+            extended_info.else_flow = else_flow
+
             #else는 없을 수도 있음
             if else_cursor is not None:
-                else_flow = FlowAST()
-                current_flowAST.set_next_flow(else_flow)
                 else_end_node = self.visit(current_flowAST=else_flow, visit_que_cursor=[else_cursor])
                 else_end_node.set_next_flow(then_end_node) #else 끝에 then의 끝(공백) 연결
+                else_flow = else_end_node
+            
+            else_flow.set_next_flow(then_end_node) #else가 없을 경우 then의 끝(공백) 연결
 
             return then_end_node
+        
+        def visit_whilestmt(while_stmt_cursor: Cursor):
+            childs = while_stmt_cursor.get_children()
+            if while_stmt_cursor.kind == 'DO_STMT':
+                condition_cursor = childs[1]
+                body_cursor = childs[0]
+
+            elif while_stmt_cursor.kind == 'WHILE_STMT':
+                condition_cursor = childs[0]
+                body_cursor = childs[1]
+            else:
+                assert False, 'while 혹은 do while 문이 아닙니다.'
+
+            from_cursor(cursor=while_stmt_cursor, flow_ast=current_flowAST)
+            self.cursor2node[while_stmt_cursor] = current_flowAST
+
+            extended_info = WhileFlowInfo(current_flowAST)
+            extended_info.condition = from_cursor(condition_cursor)
+            self.cursor2node[condition_cursor] = extended_info.condition
+            extended_info.else_flow = FlowAST()
+
+            body_flow = FlowAST()
+            current_flowAST.set_next_flow(body_flow)
+            body_end_node = self.visit(current_flowAST=body_flow, visit_que_cursor=[body_cursor])
+            extended_info.else_flow.set_next_flow(body_end_node)
+
+            return body_end_node
 
         new_node = None
         if visit_que_cursor:
@@ -84,14 +117,18 @@ class CursorVisitor:
 
             if cursor.kind == 'IF_STMT':
                 new_node = visit_ifstmt(cursor)
-            elif cursor.kind in ['WHILE_STMT', 'FOR_STMT']:
+            elif cursor.kind in ['WHILE_STMT', 'DO_STMT']:
+                new_node = visit_whilestmt(cursor)
+            elif cursor.kind == 'FOR_STMT':
                 from_cursor(cursor=cursor, flow_ast=current_flowAST)
+                self.cursor2node[cursor] = current_flowAST
                 new_node = FlowAST()
                 current_flowAST.set_next_flow(new_node)
             elif self.is_visit_type(cursor):
                 visit_que_cursor = cursor.get_children() + visit_que_cursor
             else:
                 from_cursor(cursor=cursor, flow_ast=current_flowAST)
+                self.cursor2node[cursor] = current_flowAST
                 new_node = FlowAST()
                 current_flowAST.set_next_flow(new_node)
             
