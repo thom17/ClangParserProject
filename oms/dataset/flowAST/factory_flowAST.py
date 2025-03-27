@@ -1,4 +1,4 @@
-from oms.dataset.flowAST.flowAST import FlowAST, IfFlowInfo, WhileFlowInfo
+from oms.dataset.flowAST.flowAST import FlowAST, IfFlowInfo, WhileFlowInfo, ForFlowInfo
 from clangParser.datas.Cursor import Cursor
 from typing import List
 
@@ -110,7 +110,39 @@ class CursorVisitor:
             extended_info.else_flow.set_next_flow(body_end_node)
 
             return body_end_node
+        
+        def visit_forstmt(for_stmt_cursor: Cursor):
+            assert for_stmt_cursor.kind == 'FOR_STMT', 'for문이 아닙니다.'
+            childs = for_stmt_cursor.get_children()
 
+            condition_cursor = childs[0]
+            body_cursor = childs[1]
+            end_cursor = childs[2]
+
+            from_cursor(cursor=for_stmt_cursor, flow_ast=current_flowAST)
+            self.cursor2node[for_stmt_cursor] = current_flowAST
+
+            #조건 부분
+            extended_info = ForFlowInfo(current_flowAST)
+            extended_info.condition = from_cursor(condition_cursor)
+            self.cursor2node[condition_cursor] = extended_info.condition
+            extended_info.else_flow = FlowAST()
+
+            #종료 부분
+            end_flow = from_cursor(cursor=end_cursor)
+            self.cursor2node[end_cursor] = end_flow
+
+            #body 부분            
+            body_flow = FlowAST()
+            current_flowAST.set_next_flow(body_flow)
+            body_end_node = self.visit(current_flowAST=body_flow, visit_que_cursor=[body_cursor])
+            
+            #for end와 else 연결
+            body_end_node.set_next_flow(end_flow)
+            end_flow.set_next_flow(extended_info.else_flow) 
+            
+            return extended_info.else_flow
+        
         new_node = None
         if visit_que_cursor:
             cursor = visit_que_cursor.pop(0)
@@ -120,10 +152,7 @@ class CursorVisitor:
             elif cursor.kind in ['WHILE_STMT', 'DO_STMT']:
                 new_node = visit_whilestmt(cursor)
             elif cursor.kind == 'FOR_STMT':
-                from_cursor(cursor=cursor, flow_ast=current_flowAST)
-                self.cursor2node[cursor] = current_flowAST
-                new_node = FlowAST()
-                current_flowAST.set_next_flow(new_node)
+                new_node = visit_forstmt(cursor)
             elif self.is_visit_type(cursor):
                 visit_que_cursor = cursor.get_children() + visit_que_cursor
             else:

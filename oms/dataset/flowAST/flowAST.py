@@ -64,6 +64,13 @@ class WhileFlowInfo(FlowInfo):
         self.condition: Optional[FlowAST] = None
         self.else_flow: Optional[FlowAST] = None
 
+class ForFlowInfo(FlowInfo):
+    def __init__(self, flowAST: FlowAST):
+        super().__init__(flowAST)
+        self.condition: Optional[FlowAST] = None
+        self.else_flow: Optional[FlowAST] = None
+        self.start_flow: Optional[FlowAST] = None
+        self.end_flow: Optional[FlowAST] = None
 
 if __name__ == "__main__":
     di = {}
