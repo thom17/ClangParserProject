@@ -28,24 +28,31 @@ class CUnit:
 
     def __init__(self, unit: TranslationUnit):
         self.unit: TranslationUnit = unit
-        self.file_path: str = unit.spelling
-        self.file_name, self.file_extension = os.path.splitext(self.file_path)
         self.this_file_nodes: List[clangCursor] = []
-        self.code: str = self.read_file()
         self.preprocessor_line_map: Dict[int, str] = {}
 
-        #전처리관련 코드를 포함할 경우 매우 복잡해진다.
-        cursor: clangCursor = unit.cursor
-        for child_node in cursor.get_children():
-            if child_node.location.file.name == self.file_path:
-                self.this_file_nodes.append(child_node)
-                #self.this_file_nodes.append(Cursor.Cursor(child_node, self.file_path))
+        self.file_path: str = ""
+        self.file_name: str = ""
+        self.file_extension: str = ""
+        self.code: str = ""
 
-        #전처리 관련 코드는 여기서 별도로 관리
-        line_codes = self.code.splitlines()
-        for idx, line in enumerate(line_codes):
-            if line.lstrip().startswith('#'):
-                self.preprocessor_line_map[idx+1] = line
+        if self.unit:
+            self.file_path: str = unit.spelling
+            self.file_name, self.file_extension = os.path.splitext(self.file_path)
+            self.code: str = self.read_file()
+
+            #전처리관련 코드를 포함할 경우 매우 복잡해진다.
+            cursor: clangCursor = unit.cursor
+            for child_node in cursor.get_children():
+                if child_node.location.file.name == self.file_path:
+                    self.this_file_nodes.append(child_node)
+                    #self.this_file_nodes.append(Cursor.Cursor(child_node, self.file_path))
+
+            #전처리 관련 코드는 여기서 별도로 관리
+            line_codes = self.code.splitlines()
+            for idx, line in enumerate(line_codes):
+                if line.lstrip().startswith('#'):
+                    self.preprocessor_line_map[idx+1] = line
 
     # def get_method_body_in_range(self, start_line, end_line):
     #     '''
@@ -89,6 +96,27 @@ class CUnit:
             src_pair_map[src] = (c1, c2)
 
         return src_pair_map
+
+    def __str__(self):
+        return f"Unit : {self.file_path} : {self.this_file_nodes.__len__()}"
+
+    def __repr__(self):
+        return self.__str__()
+
+    def __eq__(self, other):
+        return self.file_path == other.file_path
+
+    def __hash__(self):
+        return hash(self.file_path)
+
+    def to_dict(self):
+        return {
+            "file_path": self.file_path,
+            "file_name": self.file_name,
+            "file_extension": self.file_extension,
+            "code": self.code,
+        }
+
 
 
     def get_this_Cursor(self) -> list[Cursor]:
