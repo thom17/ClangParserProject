@@ -1,4 +1,4 @@
-from flask_app import Flask, jsonify, request
+from flask import Flask, jsonify, request
 import logging
 import sys
 sys.path.append('../')
