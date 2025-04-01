@@ -26,8 +26,8 @@ class CUnit:
     this_file_nodes : 해당 AST의 같은 파일내 자식들 (#include, #ifdef와 같은 매크로 및 정의는 재외되는듯)
     """
 
-    def __init__(self, unit: TranslationUnit):
-        self.unit: TranslationUnit = unit
+    def __init__(self, unit: Optional[TranslationUnit] = None):
+        self.unit: Optional[TranslationUnit] = unit
         self.this_file_nodes: List[clangCursor] = []
         self.preprocessor_line_map: Dict[int, str] = {}
 
