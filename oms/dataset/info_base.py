@@ -14,7 +14,7 @@ class CoreInfoData:
     is_static: bool
     is_virtual: bool
     modifier: str
-    package_str: str
+    file_path: str
     code: str
     type_str: str
 
@@ -58,7 +58,7 @@ class InfoBase(CoreInfoData, ABC):
             is_static=core_info.is_static,
             is_virtual=core_info.is_virtual,
             modifier=core_info.modifier,
-            package_str=core_info.package_str,
+            file_path=core_info.file_path,
             code=core_info.code,
             type_str=core_info.type_str
         )
