@@ -1,4 +1,3 @@
-from Cursor import Cursor
 import json
 import clang.cindex
 

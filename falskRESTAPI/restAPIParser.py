@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify
 import logging
 import sys
 sys.path.append('../')
@@ -7,9 +7,9 @@ import urllib.parse #파일경로는 인코딩되서 온다
 
 from clang.cindex import Cursor as clangCursor
 
-from clangParser.CUnit import CUnit
-from clangParser.Cursor import Cursor
-from clangParser.CursorOMS import CursorOMS
+from clangParser.datas.CUnit import CUnit
+from clangParser.datas.Cursor import Cursor
+from clangParser.datas.CursorOMS import CursorOMS
 
 app = Flask(__name__)
 
@@ -23,7 +23,7 @@ def get_stmt(file_path:str, line_num:int):
         print("parse Done")
 
         cursor: Cursor = Cursor(unit.get_method_body(line_num))
-        stmtMap = cursor.get_visit_stmt_map()
+        stmtMap = cursor.get_visit_type_map()
         json_ready_stmtMap = {key: [c.to_dict() for c in cursor_list] for key, cursor_list in stmtMap.items()}
         return jsonify(json_ready_stmtMap)
 

@@ -1,12 +1,12 @@
-import clang.cindex
+import clang.cindex as ClangIndex
 
 class SimpleVisitor:
     def __init__(self, node, base_path: str):
-        self.node: clang.cindex.Cursor = node
+        self.node: ClangIndex.Cursor = node
         self.base_path: str = base_path
         self.base_path_cpp: str = base_path.replace(".cpp", ".h")
         self.base_path_h: str = base_path.replace(".h", ".cpp")
-        self.location: clang.cindex.SourceLocation = self.node.location
+        self.location: ClangIndex.SourceLocation = self.node.location
         self.child_node = self.node.get_children()
 
     def get_source_code(self):
@@ -52,8 +52,8 @@ class SimpleVisitor:
         node 자체는 경로가 원래 상위의 경로가 아니니까
         :return:
         """
-        location: clang.cindex.SourceLocation = self.node.location
-        file: clang.cindex.File = location.file
+        location: ClangIndex.SourceLocation = self.node.location
+        file: ClangIndex.File = location.file
 
         parsing_file_path: str = file.__str__()
         return parsing_file_path.__contains__(self.base_path) and parsing_file_path
@@ -61,8 +61,8 @@ class SimpleVisitor:
 
     def visit(self):
         spelling = self.node.spelling
-        location: clang.cindex.SourceLocation = self.node.location
-        file: clang.cindex.File = location.file
+        location: ClangIndex.SourceLocation = self.node.location
+        file: ClangIndex.File = location.file
 
         # print(f"node.base_path = {self.base_path}")
 
@@ -87,8 +87,8 @@ class SimpleVisitor:
 
     def for_make_file_map(self, map=dict()):
         spelling = self.node.spelling
-        location: clang.cindex.SourceLocation = self.node.location
-        file: clang.cindex.File = location.file
+        location: ClangIndex.SourceLocation = self.node.location
+        file: ClangIndex.File = location.file
         str_file = file.__str__()
         if str_file in map:
             map[str_file].append(self.node)
@@ -118,8 +118,8 @@ class SimpleVisitor:
 
     def for_make__map(self, map=dict()):
         spelling = self.node.spelling
-        location: clang.cindex.SourceLocation = self.node.location
-        file: clang.cindex.File = location.file
+        location: ClangIndex.SourceLocation = self.node.location
+        file: ClangIndex.File = location.file
         str_file = file.__str__()
         if str_file in map:
             map[str_file].append(self.node)
@@ -135,7 +135,7 @@ class SimpleVisitor:
     def visit_for_location(self):
         # print(type(self.node))
         spelling = self.node.spelling
-        location: clang.cindex.SourceLocation = self.node.location
+        location: ClangIndex.SourceLocation = self.node.location
         file = location.file
         print("file : ", type(file), " = ", file)
 
@@ -186,13 +186,13 @@ if __name__ == "__main__":
     # print()
     # target = tus[2]
 
-    target:clang.cindex.TranslationUnit = Parser.parsing(r"../test/onupdate.cpp")
+    target:ClangIndex.TranslationUnit = Parser.parsing(r"../test/onupdate.cpp")
 
-    target_cursor:clang.cindex.Cursor  = target.cursor
+    target_cursor:ClangIndex.Cursor  = target.cursor
 
     for child in target_cursor.get_children():
         if child.kind.name == "CXX_METHOD" and child.spelling == "OnUpdate" or child.kind.name == "FUNCTION_DECL":
-            update_node:clang.cindex.Cursor = child
+            update_node:ClangIndex.Cursor = child
             break
     update_visitor = SimpleVisitor(update_node, update_node.location.file.name)
 
@@ -205,14 +205,14 @@ if __name__ == "__main__":
         print(f"{stmt_key} : {stmt_map.__len__()}")
 
 
-    clang.cindex.CursorKind
-    root_node: clang.cindex.Cursor = target.cursor
+    ClangIndex.CursorKind
+    root_node: ClangIndex.Cursor = target.cursor
 
     other_file_nodes = []
     nodes = []
 
     for node in root_node.get_children():
-        node_file: clang.cindex.File = node.location.file
+        node_file: ClangIndex.File = node.location.file
 
         if node_file and node_file.name == target.spelling:
             nodes.append(node)
@@ -234,7 +234,7 @@ if __name__ == "__main__":
 
     # 많이 나온다.. 파일 필터링은 필수.
     # for node in other_file_nodes:
-    #     if node.kind == clang.cindex.CursorKind.CXX_METHOD or node.kind == clang.cindex.CursorKind.CONSTRUCTOR:
+    #     if node.kind == ClangIndex.CursorKind.CXX_METHOD or node.kind == ClangIndex.CursorKind.CONSTRUCTOR:
     #         print(f"Node found: {node.spelling} ({node.kind.name})")
     #         print(f"Location : {node.location}")
 
@@ -248,7 +248,7 @@ if __name__ == "__main__":
 
     simpleVisit = SimpleVisitor(target.cursor, target.spelling)
     # simpleVisit.visit()
-    dataMap:dict[str, list[clang.cindex.Cursor]] = {}
+    dataMap:dict[str, list[ClangIndex.Cursor]] = {}
 
     source_code = simpleVisit.get_source_code()
 
@@ -270,7 +270,7 @@ if __name__ == "__main__":
     for key, data in cpp_list:
         print(f"{key} : {data.__len__()}")
         for node in data:
-            location: clang.cindex.SourceLocation = node.location
+            location: ClangIndex.SourceLocation = node.location
             source = read_specific_column(key, location.line, location.column)
             print("=================")
             print(f"{source}[{location.line}:{location.column}]{node.spelling} {node.kind}" )
@@ -282,8 +282,8 @@ if __name__ == "__main__":
     for stmt in stmt_map:
         print(f"{stmt.name} {stmt_map[stmt].__len__()}")
 
-    for node in stmt_map[clang.cindex.CursorKind.CALL_EXPR]:
-        location: clang.cindex.SourceLocation = node.location
+    for node in stmt_map[ClangIndex.CursorKind.CALL_EXPR]:
+        location: ClangIndex.SourceLocation = node.location
 
         file_name: str = location.file.name
         if file_name.__contains__(target.spelling):

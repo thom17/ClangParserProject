@@ -9,14 +9,11 @@ import sys
 sys.path.append('/')
 
 from clangParser.clangParser import parse_project
-from clangParser.CUnit import CUnit
-from clangParser.Cursor import Cursor
-from clangParser.CursorOMS import CursorOMS
+from clangParser.datas.CUnit import CUnit
+from clangParser.datas.Cursor import Cursor
+from clangParser.datas.CursorOMS import CursorOMS
 
 from clang.cindex import Cursor as clangCursor
-from clang.cindex import CursorKind
-from clang.cindex import SourceLocation, SourceRange
-
 
 target_project = ""
 
