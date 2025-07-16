@@ -49,13 +49,13 @@ def make_core_info(mycursor: MyCursor):
     is_virtual =node.is_virtual_method()
     is_static=node.is_static_method()
     modifier=""
-    package_str=node.location.file.name
+    file_path=node.location.file.name
     code = mycursor.get_range_code()
 
     return CoreInfoData(src_name=src_name, name=name,
-             is_virtual=is_virtual, is_static=is_static,
-             modifier=modifier, package_str=package_str,
-             code=code, comment="", type_str="")
+                        is_virtual=is_virtual, is_static=is_static,
+                        modifier=modifier, file_path=file_path,
+                        code=code, comment="", type_str="")
 
 
 def new_class_info(mycursor: MyCursor, base_info_set, clang_src_map):

@@ -7,6 +7,7 @@ target_compile_command = r"D:\dev\AutoPlanning\trunk\AP-6979-TimeTask"
 
 try:
     clang.cindex.Config.set_library_file(r"C:\Program Files\LLVM\bin\libclang.dll")
+    print('libclang.dll 설정 성공')
 except Exception as e:
     print("libclang.dll 설정 실패")
     print(e)
@@ -20,18 +21,33 @@ windows_sdk_include_paths = [
 
     r'C:/dev/VS2019 Professional/IDE/VC/Tools/MSVC/14.29.30133/atlmfc/include',
     r'C:/Program Files (x86)/Microsoft Visual Studio 2019/Community/VC/Tools/MSVC/14.29.30133/include',
-    r'C:/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt'
+    r'C:/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt',
+    r'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include',
+    r'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/atlmfc/include',
+    # r'D:/dev/AutoPlanning/trunk/AP_trunk_pure/AppCommon_AP/stdafx.h',
+    # r'D:\temp\target\data\test_head.h'
 ]
 
 include_paths = [msvc_include_path] + windows_sdk_include_paths
 
+'''
+#27 헤더 인식 문제 (참고)
+include 파일을 추가하지 않아도 <vector> 와 같은 기본 헤더는 발견시 인식되는 것 같다.
+또 오히려 추가할 경우 임시 파일의 vector 선언을 인식 못 하는거 봐서
+일단은 경로 추가는 사용 x 
+'''
 args = [
            '-std=c++14',  # C++14 표준 사용
            '-x', 'c++',  # 처리할 파일의 언어를 C++로 지정
            # '-nostdinc++', #활성화 할경우 기본 경로 무시 처리
            '-D_MSC_VER=1929',
            '-D__MSVCRT__',
-       ] + [f'-I {path}' for path in include_paths]
+        # f"-include {r'D:/temp/target/data/test_head.h'}",
+       ] #+ [f'-I {path}' for path in include_paths]
+
+# for path in include_paths:
+#     args.extend(['-I', path])
+# args
 
 def parse_context(context: str, file_path:str = None, file_remove: bool = True) -> clang.cindex.TranslationUnit:
     """
