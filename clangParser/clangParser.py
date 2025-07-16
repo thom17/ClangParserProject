@@ -2,66 +2,77 @@ import clang.cindex
 import os
 import tempfile
 from datetime import datetime
+import platform
 
-target_compile_command = r"D:\dev\AutoPlanning\trunk\AP-6979-TimeTask"
+# Configure libclang library path based on platform
+def setup_libclang():
+    """Setup libclang library path based on the current platform."""
+    system = platform.system()
+    
+    if system == "Windows":
+        # Try common Windows paths
+        common_paths = [
+            r"C:\Program Files\LLVM\bin\libclang.dll",
+            r"C:\Program Files (x86)\LLVM\bin\libclang.dll",
+        ]
+        for path in common_paths:
+            if os.path.exists(path):
+                try:
+                    clang.cindex.Config.set_library_file(path)
+                    print(f'libclang 설정 성공: {path}')
+                    return True
+                except Exception as e:
+                    continue
+    elif system == "Linux":
+        # Try common Linux paths
+        try:
+            clang.cindex.Config.set_library_file("libclang.so")
+            print('libclang 설정 성공 (Linux)')
+            return True
+        except Exception:
+            pass
+    elif system == "Darwin":  # macOS
+        try:
+            clang.cindex.Config.set_library_file("libclang.dylib")
+            print('libclang 설정 성공 (macOS)')
+            return True
+        except Exception:
+            pass
+    
+    print("libclang 설정 실패 - 기본 설정을 사용합니다")
+    return False
 
-try:
-    clang.cindex.Config.set_library_file(r"C:\Program Files\LLVM\bin\libclang.dll")
-    print('libclang.dll 설정 성공')
-except Exception as e:
-    print("libclang.dll 설정 실패")
-    print(e)
+# Initialize libclang
+setup_libclang()
 
-msvc_include_path = r'C:/dev/VS2019 Professional/IDE/VC/Tools/MSVC/14.29.30133/include'
-windows_sdk_include_paths = [
-    r'C:/Program Files (x86)/Windows Kits/8.1/Include/shared',
-    r'C:/Program Files (x86)/Windows Kits/8.1/Include/um',
-    r'C:/Program Files (x86)/Windows Kits/8.1/Include/winrt',
-    r'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include',
-
-    r'C:/dev/VS2019 Professional/IDE/VC/Tools/MSVC/14.29.30133/atlmfc/include',
-    r'C:/Program Files (x86)/Microsoft Visual Studio 2019/Community/VC/Tools/MSVC/14.29.30133/include',
-    r'C:/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt',
-    r'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include',
-    r'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/atlmfc/include',
-    # r'D:/dev/AutoPlanning/trunk/AP_trunk_pure/AppCommon_AP/stdafx.h',
-    # r'D:\temp\target\data\test_head.h'
+# Compiler arguments for cross-platform compatibility
+args = [
+    '-std=c++14',  # C++14 표준 사용
+    '-x', 'c++',   # 처리할 파일의 언어를 C++로 지정
 ]
 
-include_paths = [msvc_include_path] + windows_sdk_include_paths
+# Add platform-specific arguments
+if platform.system() == "Windows":
+    args.extend([
+        '-D_MSC_VER=1929',
+        '-D__MSVCRT__',
+    ])
 
-'''
-#27 헤더 인식 문제 (참고)
-include 파일을 추가하지 않아도 <vector> 와 같은 기본 헤더는 발견시 인식되는 것 같다.
-또 오히려 추가할 경우 임시 파일의 vector 선언을 인식 못 하는거 봐서
-일단은 경로 추가는 사용 x 
-'''
-args = [
-           '-std=c++14',  # C++14 표준 사용
-           '-x', 'c++',  # 처리할 파일의 언어를 C++로 지정
-           # '-nostdinc++', #활성화 할경우 기본 경로 무시 처리
-           '-D_MSC_VER=1929',
-           '-D__MSVCRT__',
-        # f"-include {r'D:/temp/target/data/test_head.h'}",
-       ] #+ [f'-I {path}' for path in include_paths]
+# Note: 헤더 인식 문제 (참고)
+# include 파일을 추가하지 않아도 <vector> 와 같은 기본 헤더는 발견시 인식되는 것 같다.
+# 또 오히려 추가할 경우 임시 파일의 vector 선언을 인식 못 하는거 봐서
+# 일단은 경로 추가는 사용 x
 
-# for path in include_paths:
-#     args.extend(['-I', path])
-# args
-
-def parse_context(context: str, file_path:str = None, file_remove: bool = True) -> clang.cindex.TranslationUnit:
+def parse_context(context: str, file_path: str = None, file_remove: bool = True) -> clang.cindex.TranslationUnit:
     """
     문자열을 입력받아 임시파일을 생성하고
-    생선된 파일을 파싱후 삭제
-    :param context:
-    :return:
+    생성된 파일을 파싱후 삭제
+    
+    :param context: 파싱할 C++ 코드 문자열
+    :param file_path: 임시 파일명 prefix (optional)
+    :param file_remove: 파싱 후 임시 파일 삭제 여부
+    :return: Clang TranslationUnit 객체
     """
-
-    def generate_filename(prefix="file", extension="txt"):
-        # 현재 시간을 기반으로 파일명 생성
-        return
-
-
     temp_path = 'parse_context.cpp'
     if file_path is not None:
         current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -110,19 +121,27 @@ def parsing_files(file_list: [str]):
 
 
 
-def simple_visit(node: clang.cindex.Cursor, i=0):
+def simple_visit(node: clang.cindex.Cursor, i: int = 0):
+    """재귀적으로 AST 노드를 방문하며 출력하는 간단한 방문자 함수"""
     in_tab = '\t' * i
     print(f"{in_tab}{node.kind} : {node.spelling}")
 
     for child_node in node.get_children():
-        simple_visit(child_node, i+1)
+        simple_visit(child_node, i + 1)
 
 
-
-def find_cpp_files(directory:str, add_h: bool = True) ->list[str]:
+def find_cpp_files(directory: str, add_h: bool = True):
+    """
+    디렉토리에서 C++ 파일들을 찾는 제너레이터
+    
+    :param directory: 검색할 디렉토리 경로
+    :param add_h: .h 헤더 파일도 포함할지 여부
+    :yield: C++ 파일 경로들
+    """
     find_type = '.cpp'
     if add_h:
         find_type = ('.cpp', '.h')
+    
     for root, dirs, files in os.walk(directory):
         for file in files:
             if file.endswith(find_type):
@@ -169,46 +188,3 @@ if __name__ == "__main__":
     # 문자열 파싱 함수 호출
     tu = parse_context(cpp_code)
     print(tu)
-
-
-
-    # import tkinter as tk
-    # from tkinter import filedialog
-    # import time
-    #
-    # root = tk.Tk()
-    # root.withdraw()  # Hide the Tkinter window
-    #
-    # folder_path = filedialog.askdirectory()  # Folder dialog
-    # # Use the selected folder path for further processing
-    # print("Selected folder:", folder_path)
-    #
-    # start_time = time.time()
-    # tus = parse_project(folder_path)
-    #
-    # # 결과 처리 및 출력
-    # for tu in tus:
-    #     print(tu.spelling, "contains", len(list(tu.cursor.get_children())), "elements")
-    #
-    # # Record the end time
-    # end_time = time.time()
-    #
-    # # Calculate the elapsed time
-    # elapsed_time = end_time - start_time
-    # print("Elapsed time:", elapsed_time, "seconds")
-
-
-
-
-# if __name__:
-#     import tkinter as tk
-#     from tkinter import filedialog
-#
-#     root = tk.Tk()
-#     root.withdraw()  # Tkinter 창 숨기기
-#
-#     file_path = filedialog.askopenfilename()  # 파일 대화 상자 열기
-#     unit = parsing(file_path)
-#     simple_visit(unit.cursor)
-#
-#     print(unit.spelling)

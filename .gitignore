@@ -1,5 +1,42 @@
-.idea
-.ipynb_checkpoints
-jupyter/results
-jupyter/logs
-__pycache__
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Project specific
+jupyter/results/
+jupyter/logs/
+
+# Temporary C++ files
+*.cpp.tmp
+parse_context*.cpp
+temp.cpp
+result.cpp
+
+# Database files
+*.db
+dataset.db
+
+# Virtual environment
+venv/
+env/
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+*.egg-info/

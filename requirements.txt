@@ -1,0 +1,20 @@
+# Core dependencies for ClangParserProject
+# C/C++ parsing
+libclang>=13.0.0
+
+# Machine Learning and NLP
+torch>=1.9.0
+transformers>=4.0.0
+
+# Web framework
+flask>=2.0.0
+
+# Database
+sqlalchemy>=1.4.0
+py2neo>=2021.0.0
+
+# Utilities
+chardet>=4.0.0
+
+# Development dependencies (optional)
+# tkinter is usually included with Python
