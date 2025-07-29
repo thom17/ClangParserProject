@@ -142,15 +142,28 @@ def is_skip_method(method_cursor: Cursor, debug_code: str, src_pair_map: Dict[st
     # return True
 
 def get_catch_code(method_cursor: Cursor) -> str:
-    def is_enable_type(type_name: str) -> bool:
-        base_types = ['int', 'float', 'double', 'char', 'bool',
-                      'void', 'UINT', 'uint', 'WPARAM', 'CUpdateParam', 'LPVOID', 'BOOL',  'LPARAM'
-                      ,'CString', 'LPCTSTR'
-                      ]
-        for tp in base_types:
+    def is_pointer_type(type_name: str) -> bool:
+        pointer_types = ['*', '*&', '*const']
+        for tp in pointer_types:
+            if type_name.strip().endswith(tp):
+                return True
+        return False
+    def is_collection_type(type_name: str) -> bool:
+        collection_types = ['vector', 'std::list', 'std::set', 'std::map', 'unordered_map', 'unordered_set']
+        for tp in collection_types:
             if tp in type_name:
                 return True
         return False
+
+    def is_enable_type(type_name: str) -> bool:
+        base_types = [
+            'int', 'float', 'double', 'char', 'bool', 'void', 'UINT', 'uint', 'WPARAM', 'CUpdateParam',
+            'LPVOID', 'BOOL', 'LPARAM', 'CString', 'LPCTSTR'
+        ]
+        # 타입명에서 *, &, const 등 제거
+        clean_type = type_name.replace('*', '').replace('&', '').replace('const', '').strip()
+        # 정확히 일치하는 경우만 True
+        return any(clean_type == tp for tp in base_types)
 
     #단순 출력
     src_name = method_cursor.get_src_name()
@@ -172,18 +185,20 @@ def get_catch_code(method_cursor: Cursor) -> str:
     if 0 < len(child_names):
         for idx, name in enumerate(child_names):
             dot = '.'
-            if child_types[idx].strip().endswith('*') or child_types[idx].strip().endswith('*&'):
+            if is_pointer_type(child_types[idx]):
                 dot = '->'
             if 'CArray' in child_types[idx]:
                 continue
-            elif 'vector' in child_types[idx] or 'std::map' in child_types[idx] or 'std::set' in child_types[idx] or 'std::list' in child_types[idx]:
-                parm_log += f'<<" {name} : "<<{name}{dot}size()'
+            elif is_collection_type(child_types[idx]):
+                parm_log += f'<<" {name} size : "<<{name}{dot}size()'
             elif 'CPoint' in child_types[idx]:
-                parm_log += f'<<" {name} : "<<{name}.x<<","<<{name}.y'
+                parm_log += f'<<" {name} : "<<{name}{dot}x<<","<<{name}{dot}y'
+            elif 'Point' in child_types[idx]:
+                parm_log += f'<<" {name} : "<<{name}{dot}X<<","<<{name}{dot}Y'
             elif 'float3' in child_types[idx] and not 'vector' in child_types[idx]:
                 parm_log += f'<<" {name} : "<<{name}{dot}toCString()'
             elif 'CRect' in child_types[idx]:
-                parm_log += f'<<" {name} : "<<{name}.left<<","<<{name}.top<<","<<{name}.right<<","<<{name}.bottom'
+                parm_log += f'<<" {name} : "<<{name}{dot}left<<","<<{name}{dot}top<<","<<{name}{dot}right<<","<<{name}{dot}bottom'
             elif is_enable_type(child_types[idx]):
                 parm_log += f'<<" {name} : "<<{name}'
     try:

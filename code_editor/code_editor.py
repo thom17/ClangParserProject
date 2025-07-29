@@ -101,7 +101,14 @@ def make_added_include(unit:CUnit, include_code: str)->str:
     else:
         change_index = last_pos_line - 1
 
+
+    first_cursor_idx = min([c.location.start.line for c in unit.get_this_Cursor()]) - 1
+
     code_lines = unit.code.splitlines()
+    if first_cursor_idx < change_index:
+        change_index = first_cursor_idx - 5
+
+
     code_lines[change_index] = code_lines[change_index] + '\n' + include_code
     return '\n'.join(code_lines)
 
