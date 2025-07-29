@@ -19,8 +19,6 @@ from code_editor.code_editor import CodeEditor, insert_code_in_block_start
 
 from filemanager.window_file_open import get_file_path
 
-need_keywords = ['toolbar', 'command', 'actuator']
-
 def get_file_list():
     #step1. 파일 리스트 입력 받기.
     if len(sys.argv) == 1:
@@ -67,12 +65,12 @@ def edit_unit(editor: CodeEditor):
         method_cursor, stmt_cursor = get_set(node=node, source_code=editor.file_unit.code)
         if stmt_cursor:
             org_method_code = method_cursor.get_range_code()
-            debug_code = get_planned_code(method_cursor=method_cursor)
+            debug_code = 'try { //add-macro'
             if is_skip_method(method_cursor, debug_code, src_pair_map): #이미 추가된 코드 스킵
-                replace_method = org_method_code.replace(debug_code, '')
-                editor.add_replace_node(method_cursor, replace_code=replace_method)
+                continue
             else:
                 replace_block = insert_code_in_block_start(block=stmt_cursor, insert_code= debug_code)
+                replace_block += get_catch_code(method_cursor)
                 org_block = stmt_cursor.get_range_code()
                 replace_method = org_method_code.replace(org_block, replace_block)
                 editor.add_replace_node(method_cursor, replace_code=replace_method)
@@ -80,8 +78,8 @@ def edit_unit(editor: CodeEditor):
 
     if change_counts:
         # editor.add_define('#include "../DataAccessor/DAutoGenTester.h"')
-        # editor.add_define('#include "../BaseTools/plogger.h"') #다중 지원 안됨
-        editor.add_define('#include "../DataAccessor/DAutoGenTester.h"\n#include "../BaseTools/plogger.h"')
+        editor.add_define('#include "../BaseTools/plogger.h"') #다중 지원 안됨
+        # editor.add_define('#include "../DataAccessor/DAutoGenTester.h"\n#include "../BaseTools/plogger.h"')
 
         editor.write_file()
         print(editor.file_unit.file_path)
@@ -122,38 +120,37 @@ def is_skip_method(method_cursor: Cursor, debug_code: str, src_pair_map: Dict[st
 
     dup_check = debug_code in method_code
     mfc_expect = 'BEGIN_MESSAGE_MAP' in method_code or 'IMPLEMENT_DYNAMIC' in method_code
-    head_cursor = src_pair_map[method_cursor.get_src_name()][1]
-    if head_cursor:
-        is_static = head_cursor.node.is_static_method()
-    else:
-        is_static = False
+    return dup_check or mfc_expect
+    #
+    # head_cursor = src_pair_map[method_cursor.get_src_name()][1]
+    # if head_cursor:
+    #     is_static = head_cursor.node.is_static_method()
+    # else:
+    #     is_static = False
 
-    file_srcs = read_filter_csv_file(r'target_methods.csv')
-    is_in_file = method_cursor.src_name in file_srcs
+    # file_srcs = read_filter_csv_file(r'target_methods.csv')
+    # is_in_file = method_cursor.src_name in file_srcs
 
 
-    # 필요한 키워드가 있다면
-    if is_in_file:
-        for keyword in need_keywords:
-            if keyword.lower() in method_cursor.get_src_name().lower():
-                return dup_check or mfc_expect or is_static or not is_cls_method
+    ## 필요한 키워드가 있다면
+    # if is_in_file:
+    #     for keyword in need_keywords:
+    #         if keyword.lower() in method_cursor.get_src_name().lower():
+    #             return dup_check or mfc_expect or is_static or not is_cls_method
+    #
+    ## 필요한 키워드가 없다면 스킵
+    # return True
 
-    # 필요한 키워드가 없다면 스킵
-    return True
-
-def get_planned_code(method_cursor: Cursor) -> str:
+def get_catch_code(method_cursor: Cursor) -> str:
     def is_enable_type(type_name: str) -> bool:
-        # 기본 타입인지 확인하는 함수
-        base_types = ['int', 'float', 'double', 'char', 'bool', 'void', 'uint', 'WPARAM', 'CUpdateParam', 'LPVOID']
+        base_types = ['int', 'float', 'double', 'char', 'bool',
+                      'void', 'UINT', 'uint', 'WPARAM', 'CUpdateParam', 'LPVOID', 'BOOL',  'LPARAM'
+                      ,'CString', 'LPCTSTR'
+                      ]
         for tp in base_types:
             if tp in type_name:
                 return True
         return False
-
-
-    #step 3-2. 메서드에 해당하는 삽입 코드 구하기
-    if method_cursor.kind != 'CXX_METHOD':
-        return ''
 
     #단순 출력
     src_name = method_cursor.get_src_name()
@@ -174,22 +171,44 @@ def get_planned_code(method_cursor: Cursor) -> str:
     parm_log = ""
     if 0 < len(child_names):
         for idx, name in enumerate(child_names):
-            if 'CPoint' in child_types[idx]:
+            dot = '.'
+            if child_types[idx].strip().endswith('*') or child_types[idx].strip().endswith('*&'):
+                dot = '->'
+            if 'CArray' in child_types[idx]:
+                continue
+            elif 'vector' in child_types[idx] or 'std::map' in child_types[idx] or 'std::set' in child_types[idx] or 'std::list' in child_types[idx]:
+                parm_log += f'<<" {name} : "<<{name}{dot}size()'
+            elif 'CPoint' in child_types[idx]:
                 parm_log += f'<<" {name} : "<<{name}.x<<","<<{name}.y'
             elif 'float3' in child_types[idx] and not 'vector' in child_types[idx]:
-                parm_log += f'<<" {name} : "<<{name}.toCString()'
-            elif 'vector' in child_types[idx] or 'std::map' in child_types[idx] or 'std::set' in child_types[idx]:
-                parm_log += f'<<" {name} : "<<{name}.size()'
-            elif 'CPanoCSPosInfo' in child_types[idx] or 'CArray' in child_types[idx]:
-                continue
+                parm_log += f'<<" {name} : "<<{name}{dot}toCString()'
             elif 'CRect' in child_types[idx]:
                 parm_log += f'<<" {name} : "<<{name}.left<<","<<{name}.top<<","<<{name}.right<<","<<{name}.bottom'
             elif is_enable_type(child_types[idx]):
                 parm_log += f'<<" {name} : "<<{name}'
+    try:
+        is_static = method_cursor.node.is_static_method() or method_cursor.kind != 'CXX_METHOD'
+    except Exception as e:
+        is_static = True
+        print(f'{method_cursor.get_range_code()} static check error', e)
+    cls_name ='<<typeid(*this).name() '
+    if is_static:
+        cls_name = ''
 
-    log_txt = f'//auto-gen\n\tDAutoGenDB forLogDB(L"{src_name}");\n'
-    log_txt +=f'\tLOGN_(Start)<<typeid(*this).name() ' + parm_log + ';'
-    return log_txt
+    catch_txt = f'catch (const std::exception& e) ' + '{\n'
+    if cls_name + parm_log:
+        catch_txt +=f'\tLOGN_(System)' + cls_name + parm_log + ';\n'
+    catch_txt += f'\tLOGN_(System)<<"Exception: "<<e.what();\n'
+
+    # type_map = method_cursor.get_visit_type_map()
+    # if 'RETURN_STMT' in type_map:
+    #     datas = type_map['RETURN_STMT']
+    #     last_return = datas[-1].get_range_code()
+    #     catch_txt += last_return
+    catch_txt += "}\n}\n"
+
+
+    return catch_txt
 
 
 

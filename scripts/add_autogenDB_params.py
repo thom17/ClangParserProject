@@ -1,5 +1,6 @@
 '''
-모든 메서드에 메서드 src로 DAutoGen을 생성하는걸 목표로.
+모든 메서드에 생성하는걸 목표로.
+파라미터 추가
 '''
 import sys
 import argparse
@@ -17,20 +18,13 @@ import clangParser.clangParser as ClangParser
 from clangParser.datas.CUnit import CUnit
 from code_editor.code_editor import CodeEditor, insert_code_in_block_start
 
-from filemanager.window_file_open import get_file_path
-
-need_keywords = ['toolbar', 'command', 'actuator']
 
 def get_file_list():
     #step1. 파일 리스트 입력 받기.
     if len(sys.argv) == 1:
         root = tk.Tk()
         root.withdraw()
-        # pathinfo = filedialog.askopenfilename(title="파일을 선택하세요")
         pathinfo = filedialog.askdirectory(title="폴더를 선택하세요")
-
-        # return [get_file_path(file_types=[], title='파일 입력', multiple=True)[0]]
-        
     elif len(sys.argv) < 2:
         pathinfo = sys.argv[1]
     else:
@@ -61,8 +55,8 @@ def edit_unit(editor: CodeEditor):
 
     head_unit = CUnit.parse(editor.file_unit.file_path.replace('.cpp', '.h'))
     src_pair_map = CUnit.get_src_pair_map(editor.file_unit, head_unit)
-
     change_counts = 0
+
     for node in editor.file_unit.this_file_nodes:
         method_cursor, stmt_cursor = get_set(node=node, source_code=editor.file_unit.code)
         if stmt_cursor:
@@ -77,12 +71,8 @@ def edit_unit(editor: CodeEditor):
                 replace_method = org_method_code.replace(org_block, replace_block)
                 editor.add_replace_node(method_cursor, replace_code=replace_method)
                 change_counts += 1
-
     if change_counts:
-        # editor.add_define('#include "../DataAccessor/DAutoGenTester.h"')
-        # editor.add_define('#include "../BaseTools/plogger.h"') #다중 지원 안됨
-        editor.add_define('#include "../DataAccessor/DAutoGenTester.h"\n#include "../BaseTools/plogger.h"')
-
+        editor.add_define('#include "../DataAccessor/DAutoGenTester.h"')
         editor.write_file()
         print(editor.file_unit.file_path)
 
@@ -98,6 +88,14 @@ def get_set(node: ClangIndex.Cursor, source_code: str)-> Tuple[Cursor, Optional[
             return cursor, ch
     return cursor, None
 
+
+# need_keywords = ['LButton', 'Click', 'OnBn', 'LBDown', 'LBUp', 'KeyDown', 'KeyUp', '_selectTooth']
+# skip_method = ['GetLbuttonDown', 'OnLButtonDown', 'OnLButtonUp', 'SetLbuttonDown']
+
+#일단 모두 추가
+
+skip_method = []
+
 import csv
 def read_filter_csv_file(file_path: str = 'filtered_methods.csv') -> Dict[str, str]:
     result = {}
@@ -109,48 +107,41 @@ def read_filter_csv_file(file_path: str = 'filtered_methods.csv') -> Dict[str, s
                 result[row[0]] = row[0]
     return result
 
-# with open('filtered_methods.csv', 'w', newline='', encoding='utf-8') as csvfile:
-#     writer = csv.writer(csvfile)
-# writer.writerow(['Method Name'])  # Header
-# for method_name in sorted(src_name_set):
-#     writer.writerow([method_name])
-
 def is_skip_method(method_cursor: Cursor, debug_code: str, src_pair_map: Dict[str, Tuple[Optional[Cursor], Optional[Cursor]]]):
     # step 3-2. 메서드 필터링
+    for skip in skip_method:
+        if skip in method_cursor.get_src_name():
+            return True
+
     method_code = method_cursor.get_range_code()
-    is_cls_method = method_cursor.kind == 'CXX_METHOD'
+
 
     dup_check = debug_code in method_code
     mfc_expect = 'BEGIN_MESSAGE_MAP' in method_code or 'IMPLEMENT_DYNAMIC' in method_code
     head_cursor = src_pair_map[method_cursor.get_src_name()][1]
     if head_cursor:
         is_static = head_cursor.node.is_static_method()
+    elif method_code.startswith('UINT'):
+        is_static = True  # UINT 으로 시작하는 경우는 static 함수로 간주
     else:
         is_static = False
 
-    file_srcs = read_filter_csv_file(r'target_methods.csv')
-    is_in_file = method_cursor.src_name in file_srcs
+    target_methods = read_filter_csv_file(r'target_methods.csv')
+    if method_cursor.get_src_name() in target_methods:
+        return dup_check or mfc_expect or is_static
+    else:
+        return True
+    # return dup_check or mfc_expect or is_static
 
-
-    # 필요한 키워드가 있다면
-    if is_in_file:
-        for keyword in need_keywords:
-            if keyword.lower() in method_cursor.get_src_name().lower():
-                return dup_check or mfc_expect or is_static or not is_cls_method
-
-    # 필요한 키워드가 없다면 스킵
-    return True
+    # # 필요한 키워드가 있다면
+    # for keyword in need_keywords:
+    #     if keyword.lower() in method_cursor.get_src_name().lower():
+    #         return dup_check or mfc_expect or is_static
+    #
+    # # 필요한 키워드가 없다면 스킵
+    # return True
 
 def get_planned_code(method_cursor: Cursor) -> str:
-    def is_enable_type(type_name: str) -> bool:
-        # 기본 타입인지 확인하는 함수
-        base_types = ['int', 'float', 'double', 'char', 'bool', 'void', 'uint', 'WPARAM', 'CUpdateParam', 'LPVOID']
-        for tp in base_types:
-            if tp in type_name:
-                return True
-        return False
-
-
     #step 3-2. 메서드에 해당하는 삽입 코드 구하기
     if method_cursor.kind != 'CXX_METHOD':
         return ''
@@ -172,26 +163,61 @@ def get_planned_code(method_cursor: Cursor) -> str:
                 child_types.append(ch.get_range_code().replace(ch.node.spelling, ''))
 
     parm_log = ""
+    parm_refs = ''
+    parm_info_txt = ''
     if 0 < len(child_names):
         for idx, name in enumerate(child_names):
-            if 'CPoint' in child_types[idx]:
-                parm_log += f'<<" {name} : "<<{name}.x<<","<<{name}.y'
-            elif 'float3' in child_types[idx] and not 'vector' in child_types[idx]:
-                parm_log += f'<<" {name} : "<<{name}.toCString()'
+            def is_pointer_type(type_name: str) -> bool:
+                # 포인터 타입인지 확인하는 함수
+                type_name = type_name.strip()
+                type_name=type_name.replace('const', '')  # const 제거
+                return type_name.endswith('*') or type_name.endswith('*&')
+            is_pointer = is_pointer_type(child_types[idx])
+            connect = '->' if is_pointer else '.'
+
+            if 'CArray' in child_types[idx]:
+                parm_log += f'{name}.size: %d\\n'
+                parm_refs += f', {name}{connect}GetSize()'
             elif 'vector' in child_types[idx] or 'std::map' in child_types[idx] or 'std::set' in child_types[idx]:
-                parm_log += f'<<" {name} : "<<{name}.size()'
+                parm_log += f'{name}.size : %d\\n'
+                parm_refs += f', {name}{connect}size()'
+            elif 'CPoint' in child_types[idx]:
+                parm_log += f'{name} : %d, %d\\n'
+                parm_refs += f', {name}{connect}x, {name}{connect}y'
+            elif 'float3' in child_types[idx] and not 'vector' in child_types[idx]:
+                parm_log += f'{name} : %s\\n'
+                parm_refs += f', {name}{connect}toCString()'
             elif 'CPanoCSPosInfo' in child_types[idx] or 'CArray' in child_types[idx]:
                 continue
             elif 'CRect' in child_types[idx]:
-                parm_log += f'<<" {name} : "<<{name}.left<<","<<{name}.top<<","<<{name}.right<<","<<{name}.bottom'
-            elif is_enable_type(child_types[idx]):
-                parm_log += f'<<" {name} : "<<{name}'
+                parm_log += f'{name} : %d, %d, %d, %d = (%d x %d)\\n'
+                parm_refs += f', {name}{connect}left, {name}{connect}top, {name}{connect}right, {name}{connect}bottom, {name}{connect}Width(), {name}{connect}Height()'
+            # elif is_enable_type(child_types[idx]):
+            else:
+                def get_format(type_name:str):
+                    type_name = type_name.strip()
+                    if type_name in ['int', 'bool', 'UINT', 'WPARAM', 'BOOL']:
+                        return '%d'
+                    elif type_name in ['float', 'double']:
+                        return '%.2f'
+                    elif type_name in ['char', 'CString', 'LPCTSTR']: #'LPVOID', 'void*']:
+                        return '%s'
+                    else:
+                        return ''
 
-    log_txt = f'//auto-gen\n\tDAutoGenDB forLogDB(L"{src_name}");\n'
-    log_txt +=f'\tLOGN_(Start)<<typeid(*this).name() ' + parm_log + ';'
+                format = get_format(child_types[idx])
+                if format:
+                    parm_log += f'{name} : {format}\\n'
+                    parm_refs += f', {name}'
+
+
+        parm_info_txt = f'CString parmInfos = L""; parmInfos.Format(_T("{parm_log}"){parm_refs});\n\t'
+    if parm_info_txt:
+        log_txt = f'DAutoGenDB debugDB(L"{src_name}", CString(typeid(*this).name()), parmInfos); //macro'
+    else:
+        log_txt =f'DAutoGenDB debugDB(L"{src_name}", CString(typeid(*this).name())); //macro'
+    log_txt = "//macro\n\t"+parm_info_txt + log_txt
     return log_txt
-
-
 
 
     # add_code = f'\t//auto-gen\n\tCString _debug_name_id = L"{src_name}";\n'
