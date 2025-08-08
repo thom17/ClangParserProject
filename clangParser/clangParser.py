@@ -1,34 +1,76 @@
 import clang.cindex
 import os
 import tempfile
+import platform
+import shutil
 from datetime import datetime
 
 target_compile_command = r"D:\dev\AutoPlanning\trunk\AP-6979-TimeTask"
 
+# Auto-detect libclang library path based on platform
 try:
-    clang.cindex.Config.set_library_file(r"C:\Program Files\LLVM\bin\libclang.dll")
-    print('libclang.dll 설정 성공')
+    import platform
+    import shutil
+    
+    system = platform.system()
+    if system == "Windows":
+        # Try common Windows paths
+        possible_paths = [
+            r"C:\Program Files\LLVM\bin\libclang.dll",
+            r"C:\Program Files (x86)\LLVM\bin\libclang.dll"
+        ]
+        for path in possible_paths:
+            if os.path.exists(path):
+                clang.cindex.Config.set_library_file(path)
+                print(f'libclang 설정 성공: {path}')
+                break
+    elif system in ["Linux", "Darwin"]:  # Linux or macOS
+        # libclang should be auto-detected, but we can help it
+        libclang_path = shutil.which("clang")
+        if libclang_path:
+            print(f'libclang 자동 검색됨: {libclang_path}')
+        else:
+            print('libclang가 시스템에 설치되어 있는지 확인해주세요')
+    
 except Exception as e:
-    print("libclang.dll 설정 실패")
+    print("libclang 설정 실패 (하지만 시스템 기본값 사용 시도)")
     print(e)
 
-msvc_include_path = r'C:/dev/VS2019 Professional/IDE/VC/Tools/MSVC/14.29.30133/include'
-windows_sdk_include_paths = [
-    r'C:/Program Files (x86)/Windows Kits/8.1/Include/shared',
-    r'C:/Program Files (x86)/Windows Kits/8.1/Include/um',
-    r'C:/Program Files (x86)/Windows Kits/8.1/Include/winrt',
-    r'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include',
+# Platform-specific include paths
+system = platform.system()
+include_paths = []
 
-    r'C:/dev/VS2019 Professional/IDE/VC/Tools/MSVC/14.29.30133/atlmfc/include',
-    r'C:/Program Files (x86)/Microsoft Visual Studio 2019/Community/VC/Tools/MSVC/14.29.30133/include',
-    r'C:/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt',
-    r'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include',
-    r'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/atlmfc/include',
-    # r'D:/dev/AutoPlanning/trunk/AP_trunk_pure/AppCommon_AP/stdafx.h',
-    # r'D:\temp\target\data\test_head.h'
-]
-
-include_paths = [msvc_include_path] + windows_sdk_include_paths
+if system == "Windows":
+    msvc_include_path = r'C:/dev/VS2019 Professional/IDE/VC/Tools/MSVC/14.29.30133/include'
+    windows_sdk_include_paths = [
+        r'C:/Program Files (x86)/Windows Kits/8.1/Include/shared',
+        r'C:/Program Files (x86)/Windows Kits/8.1/Include/um',
+        r'C:/Program Files (x86)/Windows Kits/8.1/Include/winrt',
+        r'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include',
+        r'C:/dev/VS2019 Professional/IDE/VC/Tools/MSVC/14.29.30133/atlmfc/include',
+        r'C:/Program Files (x86)/Microsoft Visual Studio 2019/Community/VC/Tools/MSVC/14.29.30133/include',
+        r'C:/Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt',
+        r'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include',
+        r'C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/atlmfc/include',
+    ]
+    # Only add paths that actually exist
+    include_paths = [msvc_include_path] + [path for path in windows_sdk_include_paths if os.path.exists(path)]
+elif system == "Linux":
+    # Common Linux system include paths
+    linux_include_paths = [
+        '/usr/include',
+        '/usr/include/c++',
+        '/usr/local/include',
+    ]
+    include_paths = [path for path in linux_include_paths if os.path.exists(path)]
+elif system == "Darwin":  # macOS
+    # Common macOS include paths
+    macos_include_paths = [
+        '/usr/include',
+        '/usr/local/include',
+        '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include',
+    ]
+    include_paths = [path for path in macos_include_paths if os.path.exists(path)]
 
 '''
 #27 헤더 인식 문제 (참고)
