@@ -1,11 +1,14 @@
 '''
 nullptr 관련 매크로 처리
 '''
+import os.path
 from typing import Optional
 from clangParser.datas.CUnit import CUnit, Cursor
 import clang.cindex
 from code_editor.code_editor import CodeEditor
 from dataclasses import dataclass, field
+import chardet
+
 @dataclass
 class EditMethod:
     '''
@@ -244,7 +247,7 @@ def replace_file(unit: CUnit):
     1~4 파일단위 (모든 메서드에 적용)
     """
     code_editor = CodeEditor(unit)
-    code_editor.add_define('#include "../BaseTools/plogger.h"')
+    # code_editor.add_define('#include "../BaseTools/plogger.h"')
 
     #메서드별 수행
     for method_cursor in unit.get_this_Cursor():
@@ -252,7 +255,19 @@ def replace_file(unit: CUnit):
         code_editor.add_replace_node(method_cursor, replace_method_code)
 
     #모든 메서드 처리후 파일에 적용
-    code_editor.write_file()
+    # code_editor.write_file()
+
+    this_file_name = os.path.basename(unit.file_path)
+    head_code = f'#include "{this_file_name.replace(".cpp", ".h")}"'
+    replace_cpp = code_editor.generate_replace_cpp()
+    insert_head_replace_cpp = replace_cpp.replace(head_code, head_code+f'\n#include "../BaseTools/plogger.h"\n')
+
+    with open(unit.file_path, 'rb') as file:
+        raw_data = file.read()
+    file_encode = chardet.detect(raw_data)['encoding']
+
+    with open(unit.file_path, 'w', encoding=file_encode) as f:
+        f.write(insert_head_replace_cpp)
 
 def replace_project(project_path: str):
     """
