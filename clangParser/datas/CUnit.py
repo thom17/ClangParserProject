@@ -39,6 +39,7 @@ class CUnit:
         if self.unit:
             self.file_path: str = unit.spelling
             self.file_name, self.file_extension = os.path.splitext(self.file_path)
+            self.file_name = os.path.basename(self.file_name)
             self.code: str = self.read_file()
 
             #전처리관련 코드를 포함할 경우 매우 복잡해진다.
