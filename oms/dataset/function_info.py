@@ -7,4 +7,10 @@ class FunctionInfo(InfoBase):
 
         super().__init__(core_info, owner)
 
+    @classmethod
+    def from_dict(cls, di: dict, owner: InfoBase = None) -> 'FunctionInfo':
+        core_info = CoreInfoData.from_dict(di)
+        return cls(core_info, owner)
+
+
 

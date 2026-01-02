@@ -76,6 +76,11 @@ class InfoBase(CoreInfoData, ABC):
             self.owner = owner
             owner.relationInfo.hasInfoMap.put_info(self)
 
+    @classmethod
+    def from_dict(cls, di: dict, owner: 'InfoBase' = None) -> 'InfoBase':
+        core_info = CoreInfoData.from_dict(di)
+        return cls(core_info, owner)
+
     def to_dict(self):
         core_info_dict = asdict(self.core_info)
         return core_info_dict
