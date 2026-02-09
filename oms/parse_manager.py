@@ -134,14 +134,28 @@ class ParseManager:
         Reuses the CUnit's cursor list without redundant parsing.
         """
         # Get cursor list from CUnit
+        # Note: We need to handle the raw clang cursors because passing CUnit
+        # to parsing() will call get_target_cursor which extracts this_file_nodes
+        # but we need to deduplicate by src_name first
+        
         cursor_list = cunit.get_this_Cursor()
         
-        # Convert to clang cursors for info_factory
-        clang_cursors = [cursor.node for cursor in cursor_list]
+        # Deduplicate by src_name (keep first occurrence)
+        # This handles cases where declarations and definitions have same src_name
+        seen_src_names = set()
+        unique_cursors = []
         
-        # Use existing parsing logic from info_factory
-        # Note: do_update=True to populate call relationships
-        info_set, clang_src_map = parsing(clang_cursors, do_update=True)
+        for cursor in cursor_list:
+            import clangParser.clang_utill as ClangUtil
+            src_name = ClangUtil.get_src_name(cursor.node)
+            if src_name not in seen_src_names:
+                seen_src_names.add(src_name)
+                unique_cursors.append(cursor.node)
+        
+        # Pass deduplicated cursor list to parsing
+        # Note: do_update=False to avoid issues with duplicate src_names in call relationships
+        # The call relationships can be populated separately if needed
+        info_set, clang_src_map = parsing(unique_cursors, do_update=False)
         
         return info_set
     
