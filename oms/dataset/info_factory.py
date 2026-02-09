@@ -1,5 +1,6 @@
 import clang.cindex
 from clang.cindex import Cursor
+from clangParser.datas.CUnit import CUnit
 import clangParser.clangParser as clangParser
 import clangParser.clang_utill as ClangUtil
 from clangParser.datas.Cursor import Cursor as MyCursor
@@ -31,11 +32,6 @@ var_kind_list=[
 
 kind_list = class_kind_list + method_kind_list + var_kind_list
 
-base_info_set = InfoSet()
-src_map:[str, ] = {}
-
-
-
 def make_core_info(mycursor: MyCursor):
     """
     클래스의 생성을 여기서 하는게 맞을까?
@@ -65,7 +61,7 @@ def new_class_info(mycursor: MyCursor, base_info_set, clang_src_map):
     # for info in in_defs:
     #     cls_info.relationInfo.hasInfoMap.put_info(info)
 
-    src_map[cls_info.src_name] = mycursor
+    clang_src_map[cls_info.src_name] = mycursor
 
     return cls_info
 
@@ -77,17 +73,24 @@ def new_var_info(mycursor: MyCursor, base_info_set, clang_src_map):
     core_info.type_str = mycursor.node.type.spelling
 
     var_info = VarInfo(core_info, owner_oms)
-    src_map[var_info.src_name] = mycursor
+    clang_src_map[var_info.src_name] = mycursor
     return var_info
 
 
 def new_fun_info(mycursor: MyCursor, base_info_set, clang_src_map):
-    owner_oms = Cursor2OMS(mycursor.node.semantic_parent, base_info_set, clang_src_map)
+    #owner 정보 얻기
+    try:
+        owner_oms = Cursor2OMS(mycursor.node.semantic_parent, base_info_set, clang_src_map)
+    except Exception as e:
+        owner_oms = None
+        print(f"Error in new_fun_info: {e}\n{mycursor}")
+    finally:
+        pass
     core_info = make_core_info(mycursor)
     core_info.type_str = mycursor.node.result_type.spelling
     method_info = FunctionInfo(core_info, owner_oms)
 
-    src_map[method_info.src_name] = mycursor
+    clang_src_map[method_info.src_name] = mycursor
     return method_info
 
 def __cursor2cls_info(cursor: Cursor, base_info_set, clang_src_map):
@@ -255,7 +258,7 @@ def parsing(cursor_list: List[Cursor], do_update = True) ->Tuple[InfoSet, Dict[s
         size = len(sorted_key)
         done = 0
         for fun_src_name in sorted_key:
-            mycursor = src_map[fun_src_name]
+            mycursor = clang_src_map[fun_src_name]
             method_info = all_data_set.functionInfos[fun_src_name]
             update_call(mycursor, method_info, all_data_set, clang_src_map)
             done += 1
@@ -273,7 +276,7 @@ def parsing(cursor_list: List[Cursor], do_update = True) ->Tuple[InfoSet, Dict[s
 
 
 if __name__ == "__main__":
-    from clangParser.datas.CUnit import CUnit
+
     files = [r'D:\dev\EcoCad\trunk\pure\mod_SCCrownDesign\ToolBarCrownDesign.cpp', r'D:\dev\EcoCad\trunk\pure\mod_SCCrownDesign\UIDlgCrownLibrary.cpp']
     result, clang_src_map=parsing(files)
 

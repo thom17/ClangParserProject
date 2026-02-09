@@ -6,6 +6,10 @@ class ClassInfo(InfoBase):
     def __init__(self, core_info: CoreInfoData, owner: InfoBase = None):
         super().__init__(core_info, owner)
 
+    @classmethod
+    def from_dict(cls, di: dict,  owner: InfoBase = None) -> 'ClassInfo':
+        core_info = CoreInfoData.from_dict(di)
+        return cls(core_info, owner)
 
     def get_has_fun_list(self):
         return self.relationInfo.hasInfoMap.functionInfos.values()

@@ -5,7 +5,7 @@ from clang.cindex import TranslationUnit
 from clang.cindex import SourceRange
 
 from collections import defaultdict
-from typing import Dict, List, Tuple, Set
+from typing import Dict, List, Tuple, Set, Optional
 
 import clangParser.clang_utill as ClangUtil
 
@@ -16,15 +16,17 @@ import os
 
 
 
-
 class Cursor:
 
     """
     clang.cindex.Cursor 가 불편해서 정의
     """
+    CINDEX_2_CURSOR_MAP: Dict[clangCursor, 'Cursor'] = {}
 
     def __init__(self, node: clangCursor, source_code: str = None):
         assert isinstance(node, clangCursor), f"node{type(node)} must be an instance of clang.cindex.Cursor"
+        Cursor.CINDEX_2_CURSOR_MAP[node] = self
+
         self.node = node
         self.spelling = node.spelling
         self.location: SourceLocation = node.location
@@ -39,6 +41,10 @@ class Cursor:
         
         self.line_size = self.get_line_size()
         self.child_list: List['Cursor'] = [Cursor(child, source_code) for child in node.get_children()]
+        self.parent_cursor: Optional['Cursor'] = None
+        for child in self.child_list:
+            child.parent_cursor = self
+
 
         from clangParser.CursorVisitor import CursorVisitor
         self.cursor_visitor = CursorVisitor(self)

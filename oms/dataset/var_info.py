@@ -7,3 +7,8 @@ class VarInfo(InfoBase):
 
     def __init__(self, core_info: CoreInfoData, owner: InfoBase = None):
         super().__init__(core_info, owner)
+
+    @classmethod
+    def from_dict(cls, di: dict, owner: InfoBase = None) -> 'VarInfo':
+        core_info = CoreInfoData.from_dict(di)
+        return cls(core_info, owner)

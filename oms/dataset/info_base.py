@@ -1,4 +1,4 @@
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, fields
 from oms.info_set import InfoSet
 from dataclasses import asdict
 
@@ -17,6 +17,12 @@ class CoreInfoData:
     file_path: str
     code: str
     type_str: str
+
+    @classmethod
+    def from_dict(cls, extra_dict: dict) -> 'CoreInfoData':
+        field_names = {f.name for f in fields(cls)}
+        filtered = {k: v for k, v in extra_dict.items() if k in field_names}
+        return cls(**filtered)
 
 class RelationInfo:
     def __init__(self):
@@ -69,6 +75,11 @@ class InfoBase(CoreInfoData, ABC):
         if owner:
             self.owner = owner
             owner.relationInfo.hasInfoMap.put_info(self)
+
+    @classmethod
+    def from_dict(cls, di: dict, owner: 'InfoBase' = None) -> 'InfoBase':
+        core_info = CoreInfoData.from_dict(di)
+        return cls(core_info, owner)
 
     def to_dict(self):
         core_info_dict = asdict(self.core_info)
