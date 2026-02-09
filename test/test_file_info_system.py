@@ -6,8 +6,9 @@ import sys
 import tempfile
 import time
 
-# Add project root to path
-sys.path.insert(0, '/home/runner/work/ClangParserProject/ClangParserProject')
+# Add project root to path (relative to this file)
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
 
 from oms.dataset.file_info import FileInfo, FileInfoData
 from oms.local_db import LocalDB
@@ -20,8 +21,8 @@ def test_file_info():
     print("Testing FileInfo class")
     print("="*60)
     
-    # Use a simple test file
-    test_file = "/home/runner/work/ClangParserProject/ClangParserProject/test/example.cpp"
+    # Use a simple test file (relative to project root)
+    test_file = os.path.join(project_root, "test", "example.cpp")
     
     if not os.path.exists(test_file):
         print(f"Test file not found: {test_file}")
@@ -72,7 +73,7 @@ def test_local_db():
     with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
         db_path = tmp.name
     
-    test_file = "/home/runner/work/ClangParserProject/ClangParserProject/test/example.cpp"
+    test_file = os.path.join(project_root, "test", "example.cpp")
     
     try:
         # Test database creation and schema
@@ -168,7 +169,7 @@ def test_parse_manager():
     with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
         db_path = tmp.name
     
-    test_file = "/home/runner/work/ClangParserProject/ClangParserProject/test/example.cpp"
+    test_file = os.path.join(project_root, "test", "example.cpp")
     
     try:
         # Test ParseManager creation

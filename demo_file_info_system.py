@@ -12,8 +12,9 @@ import os
 import sys
 import tempfile
 
-# Add project root to path
-sys.path.insert(0, '/home/runner/work/ClangParserProject/ClangParserProject')
+# Add project root to path (relative to this file)
+project_root = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, project_root)
 
 from oms.parse_manager import ParseManager
 
@@ -28,7 +29,7 @@ def demo_single_file():
     with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
         db_path = tmp.name
     
-    test_file = "/home/runner/work/ClangParserProject/ClangParserProject/test/example.cpp"
+    test_file = os.path.join(project_root, "test", "example.cpp")
     
     try:
         with ParseManager(db_path) as manager:
@@ -63,7 +64,7 @@ def demo_project_parsing():
         db_path = tmp.name
     
     # Use the test directory as a mini project
-    project_dir = "/home/runner/work/ClangParserProject/ClangParserProject/test"
+    project_dir = os.path.join(project_root, "test")
     
     try:
         with ParseManager(db_path) as manager:
@@ -99,7 +100,7 @@ def demo_database_queries():
     with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
         db_path = tmp.name
     
-    test_file = "/home/runner/work/ClangParserProject/ClangParserProject/test/example.cpp"
+    test_file = os.path.join(project_root, "test", "example.cpp")
     
     try:
         with ParseManager(db_path) as manager:
