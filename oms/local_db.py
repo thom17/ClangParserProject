@@ -1,7 +1,9 @@
 """
 LocalDB module for SQLite-based storage and retrieval of FileInfo and InfoBase objects.
+Supports project-based configuration with include/exclude filters.
 """
 import sqlite3
+import os
 from typing import Optional, List, Dict
 from oms.dataset.file_info import FileInfo, FileInfoData
 from oms.info_set import InfoSet
@@ -12,18 +14,48 @@ from oms.dataset.info_base import CoreInfoData
 
 
 class LocalDB:
-    """SQLite database manager for parsed file information."""
+    """SQLite database manager for parsed file information with project configuration."""
     
-    def __init__(self, db_path: str):
-        """Initialize database connection and schema."""
+    def __init__(self, db_path: str, project_root: Optional[str] = None):
+        """
+        Initialize database connection and schema.
+        
+        Args:
+            db_path: Path to the SQLite database file
+            project_root: Root directory of the project (optional, defaults to db directory)
+        """
         self.db_path = db_path
+        self.project_root = project_root or os.path.dirname(os.path.abspath(db_path))
         self.conn = sqlite3.connect(db_path)
         self.conn.execute("PRAGMA foreign_keys = ON")
         self._init_schema()
+        self._ensure_project_config()
     
     def _init_schema(self):
         """Create tables and indexes if they don't exist."""
         cursor = self.conn.cursor()
+        
+        # Create project_config table for project-wide settings
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS project_config (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT NOT NULL UNIQUE,
+                value TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        
+        # Create filter_patterns table for include/exclude patterns
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS filter_patterns (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                pattern TEXT NOT NULL,
+                filter_type TEXT NOT NULL CHECK(filter_type IN ('include', 'exclude')),
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT NOT NULL
+            )
+        """)
         
         # Create file_info table
         cursor.execute("""
@@ -74,8 +106,134 @@ class LocalDB:
             CREATE INDEX IF NOT EXISTS idx_info_base_info_type 
             ON info_base(info_type)
         """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_filter_patterns_type 
+            ON filter_patterns(filter_type)
+        """)
         
         self.conn.commit()
+    
+    def _ensure_project_config(self):
+        """Ensure project configuration exists with defaults."""
+        from datetime import datetime
+        
+        cursor = self.conn.cursor()
+        now = datetime.now().isoformat()
+        
+        # Set project root if not exists
+        cursor.execute("""
+            INSERT OR IGNORE INTO project_config (key, value, created_at, updated_at)
+            VALUES (?, ?, ?, ?)
+        """, ('project_root', self.project_root, now, now))
+        
+        # Add default exclude patterns if none exist
+        cursor.execute("SELECT COUNT(*) FROM filter_patterns")
+        if cursor.fetchone()[0] == 0:
+            default_excludes = [
+                '**/.git/**',
+                '**/.svn/**',
+                '**/build/**',
+                '**/dist/**',
+                '**/node_modules/**',
+                '**/__pycache__/**',
+                '**/*.pyc',
+                '**/CMakeFiles/**',
+                '**/out/**',
+                '**/.vscode/**',
+                '**/.idea/**',
+            ]
+            for pattern in default_excludes:
+                cursor.execute("""
+                    INSERT INTO filter_patterns (pattern, filter_type, is_active, created_at)
+                    VALUES (?, 'exclude', 1, ?)
+                """, (pattern, now))
+        
+        self.conn.commit()
+    
+    def add_include_pattern(self, pattern: str):
+        """Add an include pattern for file filtering."""
+        from datetime import datetime
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO filter_patterns (pattern, filter_type, is_active, created_at)
+            VALUES (?, 'include', 1, ?)
+        """, (pattern, datetime.now().isoformat()))
+        self.conn.commit()
+    
+    def add_exclude_pattern(self, pattern: str):
+        """Add an exclude pattern for file filtering."""
+        from datetime import datetime
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO filter_patterns (pattern, filter_type, is_active, created_at)
+            VALUES (?, 'exclude', 1, ?)
+        """, (pattern, datetime.now().isoformat()))
+        self.conn.commit()
+    
+    def remove_pattern(self, pattern: str):
+        """Remove a filter pattern."""
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM filter_patterns WHERE pattern = ?", (pattern,))
+        self.conn.commit()
+    
+    def get_include_patterns(self) -> List[str]:
+        """Get all active include patterns."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT pattern FROM filter_patterns 
+            WHERE filter_type = 'include' AND is_active = 1
+        """)
+        return [row[0] for row in cursor.fetchall()]
+    
+    def get_exclude_patterns(self) -> List[str]:
+        """Get all active exclude patterns."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT pattern FROM filter_patterns 
+            WHERE filter_type = 'exclude' AND is_active = 1
+        """)
+        return [row[0] for row in cursor.fetchall()]
+    
+    def get_all_patterns(self) -> Dict[str, List[str]]:
+        """Get all filter patterns grouped by type."""
+        return {
+            'include': self.get_include_patterns(),
+            'exclude': self.get_exclude_patterns()
+        }
+    
+    def clear_patterns(self, filter_type: Optional[str] = None):
+        """Clear filter patterns. If filter_type is None, clears all patterns."""
+        cursor = self.conn.cursor()
+        if filter_type:
+            cursor.execute("DELETE FROM filter_patterns WHERE filter_type = ?", (filter_type,))
+        else:
+            cursor.execute("DELETE FROM filter_patterns")
+        self.conn.commit()
+    
+    def set_config(self, key: str, value: str):
+        """Set a configuration value."""
+        from datetime import datetime
+        cursor = self.conn.cursor()
+        now = datetime.now().isoformat()
+        cursor.execute("""
+            INSERT INTO project_config (key, value, created_at, updated_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value,
+                updated_at = excluded.updated_at
+        """, (key, value, now, now))
+        self.conn.commit()
+    
+    def get_config(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        """Get a configuration value."""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT value FROM project_config WHERE key = ?", (key,))
+        row = cursor.fetchone()
+        return row[0] if row else default
+    
+    def get_project_root(self) -> str:
+        """Get the project root directory."""
+        return self.get_config('project_root', self.project_root)
     
     def save(self, file_info: FileInfo):
         """

@@ -1,11 +1,13 @@
 """
 ParseManager module for managing the complete parsing workflow.
-Integrates CUnit parsing, InfoSet creation, and LocalDB storage.
+Integrates CUnit parsing, InfoSet creation, and LocalDB storage with project-based configuration.
 """
+import os
 from typing import List, Tuple, Optional
 from oms.local_db import LocalDB
 from oms.dataset.file_info import FileInfo
 from oms.info_set import InfoSet
+from oms.filter_utils import FileFilter
 from clangParser.datas.CUnit import CUnit
 from oms.dataset.info_factory import parsing, get_target_cursor
 
@@ -13,9 +15,78 @@ from oms.dataset.info_factory import parsing, get_target_cursor
 class ParseManager:
     """Manager class for parsing C++ files and storing results in database."""
     
-    def __init__(self, db_path: str):
-        """Initialize with database path."""
-        self.db = LocalDB(db_path)
+    def __init__(self, project_dir: str, db_name: str = '.clangparse.db'):
+        """
+        Initialize with project directory.
+        
+        Args:
+            project_dir: Root directory of the project
+            db_name: Name of the database file (default: .clangparse.db)
+        """
+        self.project_dir = os.path.abspath(project_dir)
+        
+        # Create .clangparse directory if it doesn't exist
+        cache_dir = os.path.join(self.project_dir, '.clangparse')
+        os.makedirs(cache_dir, exist_ok=True)
+        
+        # Database path in .clangparse directory
+        db_path = os.path.join(cache_dir, db_name)
+        self.db = LocalDB(db_path, project_root=self.project_dir)
+        
+        # Initialize file filter with patterns from DB
+        self._init_filters()
+    
+    def _init_filters(self):
+        """Initialize file filter from database configuration."""
+        patterns = self.db.get_all_patterns()
+        self.file_filter = FileFilter(
+            include_patterns=patterns.get('include', []),
+            exclude_patterns=patterns.get('exclude', []),
+            project_root=self.project_dir
+        )
+    
+    def load_filter_config(self, config_path: Optional[str] = None):
+        """
+        Load filter configuration from file.
+        If config_path is None, looks for .clangparse_ignore in project root.
+        
+        Args:
+            config_path: Path to config file (optional)
+        """
+        if config_path is None:
+            config_path = os.path.join(self.project_dir, '.clangparse_ignore')
+        
+        if not os.path.exists(config_path):
+            return
+        
+        # Load patterns from file
+        filter_from_file = FileFilter.from_config_file(config_path, self.project_dir)
+        
+        # Clear existing patterns and add from file
+        self.db.clear_patterns()
+        
+        for pattern in filter_from_file.include_patterns:
+            self.db.add_include_pattern(pattern)
+        
+        for pattern in filter_from_file.exclude_patterns:
+            self.db.add_exclude_pattern(pattern)
+        
+        # Refresh filter
+        self._init_filters()
+    
+    def add_include_pattern(self, pattern: str):
+        """Add an include pattern."""
+        self.db.add_include_pattern(pattern)
+        self._init_filters()
+    
+    def add_exclude_pattern(self, pattern: str):
+        """Add an exclude pattern."""
+        self.db.add_exclude_pattern(pattern)
+        self._init_filters()
+    
+    def get_filter_patterns(self) -> dict:
+        """Get current filter patterns."""
+        return self.db.get_all_patterns()
     
     def parse_and_save(self, file_path: str) -> FileInfo:
         """
@@ -70,19 +141,33 @@ class ParseManager:
             print(f"Up-to-date (from DB): {file_path}")
             return file_info
     
-    def smart_parse_project(self, project_dir: str, add_h: bool = True) -> List[Tuple[str, FileInfo]]:
+    def smart_parse_project(self, add_h: bool = True, use_filters: bool = True) -> List[Tuple[str, FileInfo]]:
         """
-        Parse all C++ files in a project directory.
+        Parse all C++ files in the project directory.
         Shows progress and returns list of (file_path, FileInfo) tuples.
+        
+        Args:
+            add_h: Include .h header files
+            use_filters: Apply include/exclude filters
         """
         # Import here to avoid circular dependency
         from clangParser.clangParser import find_cpp_files
         
         # Find all C++ files
-        print(f"Scanning directory: {project_dir}")
-        file_paths = list(find_cpp_files(project_dir, add_h=add_h))
+        print(f"Scanning directory: {self.project_dir}")
+        all_file_paths = list(find_cpp_files(self.project_dir, add_h=add_h))
+        
+        # Apply filters if enabled
+        if use_filters:
+            file_paths = self.file_filter.filter_files(all_file_paths)
+            filtered_count = len(all_file_paths) - len(file_paths)
+            if filtered_count > 0:
+                print(f"Filtered out {filtered_count} files based on patterns")
+        else:
+            file_paths = all_file_paths
+        
         total_files = len(file_paths)
-        print(f"Found {total_files} files\n")
+        print(f"Found {total_files} files to process\n")
         
         results = []
         parsed_count = 0
