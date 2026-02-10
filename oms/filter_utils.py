@@ -88,32 +88,35 @@ class FileFilter:
         
         # Handle ** for recursive directory matching
         if '**' in pattern:
-            # Convert ** pattern to regex-like matching
-            parts = pattern.split('**')
-            if len(parts) == 2:
-                prefix, suffix = parts
-                # Remove leading/trailing slashes
-                prefix = prefix.rstrip('/')
-                suffix = suffix.lstrip('/')
+            # Split on ** and match parts
+            parts = pattern.split('**/')
+            if len(parts) >= 2:
+                # Pattern like **/build/** or **/.git/**
+                prefix = parts[0].rstrip('/')  # Everything before **
+                suffix = '/'.join(parts[1:])    # Everything after **
                 
-                # Check prefix
-                if prefix and not path.startswith(prefix):
-                    return False
-                
-                # Check suffix
-                if suffix:
+                # If there's a prefix, check it matches start
+                if prefix:
+                    if not (path.startswith(prefix + '/') or path == prefix):
+                        return False
                     # Remove prefix from path
-                    remaining = path[len(prefix):].lstrip('/')
-                    # Check if any part of remaining path matches suffix
-                    if suffix.endswith('/'):
-                        # Directory pattern
-                        return any(part.startswith(suffix.rstrip('/')) 
-                                 for part in remaining.split('/'))
+                    if path.startswith(prefix + '/'):
+                        path = path[len(prefix)+1:]
+                
+                # Check if suffix pattern matches anywhere in remaining path
+                if suffix:
+                    # For patterns like .git/**, check if path starts with or contains .git/
+                    if suffix.endswith('/**'):
+                        dir_pattern = suffix[:-3]  # Remove /**
+                        # Check if any component matches
+                        path_parts = path.split('/')
+                        return any(part == dir_pattern or path.startswith(dir_pattern + '/') 
+                                 for part in path_parts)
                     else:
-                        # File pattern
-                        return fnmatch.fnmatch(remaining, suffix) or \
-                               any(fnmatch.fnmatch(part, suffix) 
-                                   for part in remaining.split('/'))
+                        # For file patterns, match against any suffix
+                        return fnmatch.fnmatch(path, suffix) or \
+                               any(fnmatch.fnmatch(path[i:], suffix) 
+                                   for i in range(len(path)) if path[i] == '/')
                 
                 return True
         
