@@ -15,16 +15,28 @@ from oms.local_db import LocalDB
 from oms.filter_utils import FileFilter
 from oms.parse_manager import ParseManager
 
+def get_dir_by_explore():
+    import sys
+    sys.path.append(r'D:\dev\python_pure_projects\PyUtil')
+    from filemanager.window_file_open import get_folder_path
+    return get_folder_path(title='프로젝트 폴더 선택')
+
+def get_file_by_explore():
+    import sys
+    sys.path.append(r'D:\dev\python_pure_projects\PyUtil')
+    from filemanager.window_file_open import get_file_path
+    return get_file_path(title='db 선택')
+
 
 def test_localdb_project_config():
     """Test LocalDB project configuration."""
     print("\n" + "="*60)
     print("Testing LocalDB Project Configuration")
     print("="*60)
-    
-    with tempfile.TemporaryDirectory() as tmpdir:
-        db_path = os.path.join(tmpdir, 'test.db')
-        project_root = tmpdir
+    path = get_dir_by_explore()
+    if path:
+        db_path = os.path.join(path, 'test.db')
+        project_root = path
         
         try:
             # Create LocalDB with project root
@@ -39,7 +51,7 @@ def test_localdb_project_config():
             """)
             assert cursor.fetchone() is not None, "project_config table not found"
             print("   ✓ project_config table created")
-            
+
             # Check filter_patterns table exists
             cursor.execute("""
                 SELECT name FROM sqlite_master 
@@ -47,20 +59,20 @@ def test_localdb_project_config():
             """)
             assert cursor.fetchone() is not None, "filter_patterns table not found"
             print("   ✓ filter_patterns table created")
-            
+
             # Test config get/set
             print("\n2. Testing config get/set")
             db.set_config('test_key', 'test_value')
             value = db.get_config('test_key')
             assert value == 'test_value', f"Expected 'test_value', got '{value}'"
             print("   ✓ Config get/set works")
-            
+
             # Test project root
             print("\n3. Testing project root")
             stored_root = db.get_project_root()
             assert stored_root == project_root, f"Project root mismatch"
             print(f"   ✓ Project root: {stored_root}")
-            
+
             db.close()
             print("\n✓ LocalDB project config tests passed!")
             return True
@@ -77,7 +89,7 @@ def test_filter_patterns():
     print("\n" + "="*60)
     print("Testing Filter Pattern Management")
     print("="*60)
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = os.path.join(tmpdir, 'test.db')
         
@@ -90,28 +102,28 @@ def test_filter_patterns():
             assert len(excludes) > 0, "No default exclude patterns"
             assert any('.git' in p for p in excludes), ".git pattern not in defaults"
             print(f"   ✓ Found {len(excludes)} default exclude patterns")
-            
+
             # Add custom include pattern
             print("\n2. Adding custom include pattern")
             db.add_include_pattern('**/*.cpp')
             includes = db.get_include_patterns()
             assert '**/*.cpp' in includes, "Include pattern not added"
             print("   ✓ Custom include pattern added")
-            
+
             # Add custom exclude pattern
             print("\n3. Adding custom exclude pattern")
             db.add_exclude_pattern('**/test/**')
             excludes = db.get_exclude_patterns()
             assert '**/test/**' in excludes, "Exclude pattern not added"
             print("   ✓ Custom exclude pattern added")
-            
+
             # Remove pattern
             print("\n4. Removing pattern")
             db.remove_pattern('**/*.cpp')
             includes = db.get_include_patterns()
             assert '**/*.cpp' not in includes, "Pattern not removed"
             print("   ✓ Pattern removed successfully")
-            
+
             # Get all patterns
             print("\n5. Getting all patterns")
             all_patterns = db.get_all_patterns()
@@ -119,14 +131,14 @@ def test_filter_patterns():
             assert 'exclude' in all_patterns, "Exclude key missing"
             print(f"   ✓ Include: {len(all_patterns['include'])} patterns")
             print(f"   ✓ Exclude: {len(all_patterns['exclude'])} patterns")
-            
+
             # Clear patterns
             print("\n6. Clearing exclude patterns")
             db.clear_patterns('exclude')
             excludes = db.get_exclude_patterns()
             assert len(excludes) == 0, "Patterns not cleared"
             print("   ✓ Exclude patterns cleared")
-            
+
             db.close()
             print("\n✓ Filter pattern tests passed!")
             return True
@@ -216,12 +228,20 @@ def test_file_filter():
             return False
 
 
+def test_read_db_2_oms():
+    path = get_file_by_explore()
+    db = LocalDB(path)
+    file_infos = db.load_all(True)
+    for f_info in file_infos:
+        print(f_info.file_path)
+        print(f_info.info_set)
+
 def test_config_file_loading():
     """Test loading configuration from .clangparse_ignore file."""
     print("\n" + "="*60)
     print("Testing Config File Loading")
     print("="*60)
-    
+
     with tempfile.TemporaryDirectory() as tmpdir:
         try:
             # Create a config file
@@ -270,15 +290,17 @@ def test_parse_manager_project_based():
     print("\n" + "="*60)
     print("Testing ParseManager Project-Based Initialization")
     print("="*60)
-    
-    with tempfile.TemporaryDirectory() as tmpdir:
+
+    project_path = get_dir_by_explore()
+    print(project_path)
+    if project_path:
         try:
             # Create ParseManager with project directory
             print("\n1. Creating ParseManager with project directory")
-            manager = ParseManager(tmpdir)
+            manager = ParseManager(project_path)
             
             # Check .clangparse directory created
-            cache_dir = os.path.join(tmpdir, '.clangparse')
+            cache_dir = os.path.join(project_path, '.clangparse')
             assert os.path.exists(cache_dir), ".clangparse directory not created"
             print(f"   ✓ Cache directory created: {cache_dir}")
             
@@ -290,7 +312,7 @@ def test_parse_manager_project_based():
             # Check project root set correctly
             print("\n2. Checking project root")
             project_root = manager.db.get_project_root()
-            assert os.path.samefile(project_root, tmpdir), "Project root mismatch"
+            assert os.path.samefile(project_root, project_path), "Project root mismatch"
             print(f"   ✓ Project root: {project_root}")
             
             # Test filter patterns
@@ -306,6 +328,8 @@ def test_parse_manager_project_based():
             patterns = manager.get_filter_patterns()
             assert '**/temp/**' in patterns['exclude'], "Pattern not added"
             print("   ✓ Custom pattern added")
+
+            manager.smart_parse_project()
             
             manager.close()
             print("\n✓ ParseManager project-based tests passed!")
@@ -316,7 +340,6 @@ def test_parse_manager_project_based():
             import traceback
             traceback.print_exc()
             return False
-
 
 def main():
     """Run all tests."""
@@ -353,5 +376,5 @@ def main():
         return 1
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+# if __name__ == "__main__":
+#     sys.exit(main())

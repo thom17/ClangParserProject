@@ -328,7 +328,75 @@ class LocalDB:
         except Exception as e:
             self.conn.rollback()
             raise e
-    
+
+    def __update_file_info(self, file_info: FileInfo):
+        """FileInfo의 InfoBase 객체들을 데이터베이스에서 Load하여 InfoSet 생성"""
+        cursor = self.conn.cursor()
+
+        # Get file_id
+        cursor.execute("SELECT id FROM file_info WHERE file_path = ?", (file_info.file_path,))
+        file_id = cursor.fetchone()[0]
+
+        # Load info_base entries
+        cursor.execute("""
+               SELECT info_type, name, src_name, comment, is_static, is_virtual,
+                      modifier, file_path, code, type_str, owner_src_name
+               FROM info_base
+               WHERE file_id = ?
+           """, (file_id,))
+
+        rows = cursor.fetchall()
+
+        # First pass: create all InfoBase objects without owner relationships
+        info_map = {}  # src_name -> InfoBase
+
+        for row in rows:
+            info_type, name, src_name, comment, is_static, is_virtual, \
+                modifier, info_file_path, code, type_str, owner_src_name = row
+
+            core_data = CoreInfoData(
+                name=name,
+                src_name=src_name,
+                comment=comment,
+                is_static=bool(is_static),
+                is_virtual=bool(is_virtual),
+                modifier=modifier,
+                file_path=info_file_path,
+                code=code,
+                type_str=type_str
+            )
+
+            # Create appropriate InfoBase type
+            if info_type == 'ClassInfo':
+                info = ClassInfo(core_data, owner=None)
+            elif info_type == 'FunctionInfo':
+                info = FunctionInfo(core_data, owner=None)
+            elif info_type == 'VarInfo':
+                info = VarInfo(core_data, owner=None)
+            else:
+                continue
+
+            info_map[src_name] = info
+            file_info.info_set.put_info(info)
+
+        # Second pass: restore owner relationships and hasInfoMap
+        cursor.execute("""
+               SELECT src_name, owner_src_name
+               FROM info_base
+               WHERE file_id = ? AND owner_src_name != ''
+           """, (file_id,))
+
+        owner_rows = cursor.fetchall()
+        for src_name, owner_src_name in owner_rows:
+            if src_name in info_map and owner_src_name in info_map:
+                child_info = info_map[src_name]
+                owner_info = info_map[owner_src_name]
+                child_info.owner = owner_info
+                # Add to owner's hasInfoMap
+                owner_info.relationInfo.hasInfoMap.put_info(child_info)
+
+        return info_map
+
     def load(self, file_path: str) -> Optional[FileInfo]:
         """
         Load FileInfo from database and restore all InfoBase objects with owner relationships.
@@ -360,69 +428,7 @@ class LocalDB:
         )
         
         file_info = FileInfo(file_data)
-        
-        # Get file_id
-        cursor.execute("SELECT id FROM file_info WHERE file_path = ?", (file_path,))
-        file_id = cursor.fetchone()[0]
-        
-        # Load info_base entries
-        cursor.execute("""
-            SELECT info_type, name, src_name, comment, is_static, is_virtual,
-                   modifier, file_path, code, type_str, owner_src_name
-            FROM info_base
-            WHERE file_id = ?
-        """, (file_id,))
-        
-        rows = cursor.fetchall()
-        
-        # First pass: create all InfoBase objects without owner relationships
-        info_map = {}  # src_name -> InfoBase
-        
-        for row in rows:
-            info_type, name, src_name, comment, is_static, is_virtual, \
-                modifier, info_file_path, code, type_str, owner_src_name = row
-            
-            core_data = CoreInfoData(
-                name=name,
-                src_name=src_name,
-                comment=comment,
-                is_static=bool(is_static),
-                is_virtual=bool(is_virtual),
-                modifier=modifier,
-                file_path=info_file_path,
-                code=code,
-                type_str=type_str
-            )
-            
-            # Create appropriate InfoBase type
-            if info_type == 'ClassInfo':
-                info = ClassInfo(core_data, owner=None)
-            elif info_type == 'FunctionInfo':
-                info = FunctionInfo(core_data, owner=None)
-            elif info_type == 'VarInfo':
-                info = VarInfo(core_data, owner=None)
-            else:
-                continue
-            
-            info_map[src_name] = info
-            file_info.info_set.put_info(info)
-        
-        # Second pass: restore owner relationships and hasInfoMap
-        cursor.execute("""
-            SELECT src_name, owner_src_name
-            FROM info_base
-            WHERE file_id = ? AND owner_src_name != ''
-        """, (file_id,))
-        
-        owner_rows = cursor.fetchall()
-        for src_name, owner_src_name in owner_rows:
-            if src_name in info_map and owner_src_name in info_map:
-                child_info = info_map[src_name]
-                owner_info = info_map[owner_src_name]
-                child_info.owner = owner_info
-                # Add to owner's hasInfoMap
-                owner_info.relationInfo.hasInfoMap.put_info(child_info)
-        
+        self.__update_file_info(file_info)
         return file_info
     
     def load_all(self, include_content: bool = False) -> List[FileInfo]:
@@ -459,6 +465,7 @@ class LocalDB:
                 pair_file_path=row[6]
             )
             file_info = FileInfo(file_data)
+            self.__update_file_info(file_info)
             file_infos.append(file_info)
         
         return file_infos
