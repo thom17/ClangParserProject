@@ -165,50 +165,44 @@ def test_parse_manager():
     print("Testing ParseManager class")
     print("="*60)
     
-    # Create temporary database
-    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
-        db_path = tmp.name
-    
-    test_file = os.path.join(project_root, "test", "example.cpp")
-    
-    try:
-        # Test ParseManager creation
-        print(f"\n1. Creating ParseManager")
-        manager = ParseManager(db_path)
-        print("   ✓ ParseManager created")
+    # Create temporary project directory
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_file = os.path.join(project_root, "test", "example.cpp")
         
-        # Test parse_and_save
-        print(f"\n2. Testing parse_and_save")
-        file_info = manager.parse_and_save(test_file)
-        print(f"   ✓ Parsed and saved: {file_info.info_count} infos")
-        
-        # Test smart_parse (should load from DB)
-        print(f"\n3. Testing smart_parse (should load from DB)")
-        file_info2 = manager.smart_parse(test_file)
-        print(f"   ✓ Smart parse completed")
-        
-        # Test print_status
-        print(f"\n4. Testing print_status")
-        manager.print_status()
-        
-        # Test get_stale_files
-        print(f"\n5. Testing get_stale_files")
-        stale_files = manager.get_stale_files()
-        print(f"   ✓ Found {len(stale_files)} stale files")
-        
-        manager.close()
-        print("\n✓ ParseManager tests passed!")
-        return True
-        
-    except Exception as e:
-        print(f"\n✗ ParseManager test failed: {e}")
-        import traceback
-        traceback.print_exc()
-        return False
-    finally:
-        # Clean up
-        if os.path.exists(db_path):
-            os.remove(db_path)
+        try:
+            # Test ParseManager creation with project directory
+            print(f"\n1. Creating ParseManager with project directory")
+            manager = ParseManager(tmpdir)
+            print("   ✓ ParseManager created")
+            
+            # Test parse_and_save
+            print(f"\n2. Testing parse_and_save")
+            file_info = manager.parse_and_save(test_file)
+            print(f"   ✓ Parsed and saved: {file_info.info_count} infos")
+            
+            # Test smart_parse (should load from DB)
+            print(f"\n3. Testing smart_parse (should load from DB)")
+            file_info2 = manager.smart_parse(test_file)
+            print(f"   ✓ Smart parse completed")
+            
+            # Test print_status
+            print(f"\n4. Testing print_status")
+            manager.print_status()
+            
+            # Test get_stale_files
+            print(f"\n5. Testing get_stale_files")
+            stale_files = manager.get_stale_files()
+            print(f"   ✓ Found {len(stale_files)} stale files")
+            
+            manager.close()
+            print("\n✓ ParseManager tests passed!")
+            return True
+            
+        except Exception as e:
+            print(f"\n✗ ParseManager test failed: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
 
 
 def main():
