@@ -1,0 +1,184 @@
+# Filter Configuration GUI - Visual Overview
+
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ Filter Configuration - /path/to/project                                  ╳ ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ Configuration: [default          ▼] [New Config] [Load]                     ║
+║ Mode: ○ Skip (Exclude)  ○ Include Only                                       ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ ┌────────────────────────────────────────────────────────────────────────┐ ║
+║ │ [Folders] [Extensions] [Preview]                                       │ ║
+║ ├────────────────────────────────────────────────────────────────────────┤ ║
+║ │ FOLDERS TAB                                                            │ ║
+║ │                                                                        │ ║
+║ │ Search: [                                        ]                     │ ║
+║ │                                                                        │ ║
+║ │ [Select All] [Deselect All]                                           │ ║
+║ │                                                                        │ ║
+║ │ ┌──────────────────────────────────────────────────────────────────┐ │ ║
+║ │ │ Folder Path                                          Files       │ │ ║
+║ │ ├──────────────────────────────────────────────────────────────────┤ │ ║
+║ │ │ ☐ src                                              15           │ │ ║
+║ │ │ ☐ include                                          8            │ │ ║
+║ │ │ ☑ test                                             23           │ │ ║
+║ │ │ ☑ build                                            142          │ │ ║
+║ │ │ ☐ docs                                             5            │ │ ║
+║ │ │ ☐ scripts                                          7            │ │ ║
+║ │ │ ☑ third_party                                      89           │ │ ║
+║ │ │ ☐ examples                                         12           │ │ ║
+║ │ │                                                                  │ │ ║
+║ │ └──────────────────────────────────────────────────────────────────┘ │ ║
+║ │                                                                        │ ║
+║ └────────────────────────────────────────────────────────────────────────┘ ║
+║                                                                              ║
+║ [Clear Selection]                [Apply Filters] [Save Configuration]       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ EXTENSIONS TAB                                                               ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ [Select All] [Deselect All]                                                  ║
+║                                                                               ║
+║ ┌────────────────────────────────────────────────────────────────────────┐  ║
+║ │ Extension                                        File Count            │  ║
+║ ├────────────────────────────────────────────────────────────────────────┤  ║
+║ │ ☑ .cpp                                           145                   │  ║
+║ │ ☑ .h                                             98                    │  ║
+║ │ ☑ .hpp                                           34                    │  ║
+║ │ ☐ .o                                             0                     │  ║
+║ │ ☐ .obj                                           0                     │  ║
+║ │ ☐ .a                                             0                     │  ║
+║ │ ☐ .so                                            0                     │  ║
+║ │ ☐ .py                                            12                    │  ║
+║ │ ☐ .md                                            5                     │  ║
+║ │ ☐ .txt                                           3                     │  ║
+║ └────────────────────────────────────────────────────────────────────────┘  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║ PREVIEW TAB                                                                  ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║ Total: 350 files | Included: 277 | Excluded: 73              [Preview]      ║
+║                                                                               ║
+║ ┌────────────────────────────────────────────────────────────────────────┐  ║
+║ │ === INCLUDED FILES ===                                                 │  ║
+║ │   ✓ src/main.cpp                                                       │  ║
+║ │   ✓ src/utils.cpp                                                      │  ║
+║ │   ✓ src/parser.cpp                                                     │  ║
+║ │   ✓ include/header.h                                                   │  ║
+║ │   ✓ include/types.h                                                    │  ║
+║ │   ... and 272 more                                                     │  ║
+║ │                                                                         │  ║
+║ │ === EXCLUDED FILES ===                                                 │  ║
+║ │   ✗ test/test_main.cpp                                                 │  ║
+║ │   ✗ test/test_utils.cpp                                                │  ║
+║ │   ✗ build/main.o                                                       │  ║
+║ │   ✗ build/utils.o                                                      │  ║
+║ │   ✗ third_party/lib/something.cpp                                      │  ║
+║ │   ... and 68 more                                                      │  ║
+║ └────────────────────────────────────────────────────────────────────────┘  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+## GUI Workflow Diagram
+
+```
+┌─────────────────┐
+│  Open GUI       │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐         ┌──────────────────┐
+│ Select/Create   │────────▶│ Load Existing    │
+│ Configuration   │         │ Configuration    │
+└────────┬────────┘         └──────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Choose Mode     │
+│ - Exclude       │
+│ - Include Only  │
+└────────┬────────┘
+         │
+         ├─────────────────────┬─────────────────────┐
+         │                     │                     │
+         ▼                     ▼                     ▼
+┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐
+│ Select Folders  │   │ Select          │   │ Custom          │
+│ - Search        │   │ Extensions      │   │ Patterns        │
+│ - Multi-select  │   │ - By count      │   │                 │
+└────────┬────────┘   └────────┬────────┘   └────────┬────────┘
+         │                     │                     │
+         └─────────────────────┴─────────────────────┘
+                               │
+                               ▼
+                      ┌─────────────────┐
+                      │ Preview Results │
+                      │ - Included      │
+                      │ - Excluded      │
+                      │ - Statistics    │
+                      └────────┬────────┘
+                               │
+                      ┌────────┴────────┐
+                      │                 │
+                      ▼                 ▼
+            ┌─────────────────┐  ┌─────────────────┐
+            │ Save            │  │ Apply &         │
+            │ Configuration   │  │ Close           │
+            └─────────────────┘  └─────────────────┘
+```
+
+## Feature Highlights
+
+### 1. Multi-Tab Interface
+- **Folders**: Browse and select project directories
+- **Extensions**: Choose file types to include/exclude
+- **Preview**: See results before applying
+
+### 2. Smart Selection
+- Checkbox for each item
+- Select All / Deselect All buttons
+- Search functionality (folders)
+- File count display
+
+### 3. Configuration Management
+- Multiple named configurations
+- Switch between configurations
+- Default configuration auto-created
+- Save and load functionality
+
+### 4. Real-time Feedback
+- Preview shows exact files affected
+- Statistics: Total, Included, Excluded
+- Update preview before saving
+
+### 5. Two Filtering Modes
+- **Skip (Exclude)**: Remove selected items from parsing
+- **Include Only**: Parse only selected items
+
+## Example Scenarios
+
+### Scenario 1: Exclude Test and Build
+```
+Mode: Skip (Exclude)
+Selected Folders: ☑ test, ☑ build
+Result: Parses everything except test/ and build/
+```
+
+### Scenario 2: C++ Files Only
+```
+Mode: Include Only
+Selected Extensions: ☑ .cpp, ☑ .h, ☑ .hpp
+Result: Parses only C++ source files
+```
+
+### Scenario 3: Complex Filtering
+```
+Mode: Skip (Exclude)
+Selected Folders: ☑ test, ☑ third_party
+Selected Extensions: ☑ .o, ☑ .obj, ☑ .tmp
+Result: Exclude test/, third_party/, and binary/temp files
+```
