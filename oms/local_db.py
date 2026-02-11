@@ -46,14 +46,30 @@ class LocalDB:
             )
         """)
         
+        # Create filter_config_sets table for named filter configurations
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS filter_config_sets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL UNIQUE,
+                description TEXT,
+                is_default INTEGER DEFAULT 0,
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        
         # Create filter_patterns table for include/exclude patterns
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS filter_patterns (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                config_set_id INTEGER,
                 pattern TEXT NOT NULL,
                 filter_type TEXT NOT NULL CHECK(filter_type IN ('include', 'exclude')),
+                pattern_category TEXT CHECK(pattern_category IN ('folder', 'extension', 'custom')),
                 is_active INTEGER DEFAULT 1,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (config_set_id) REFERENCES filter_config_sets(id) ON DELETE CASCADE
             )
         """)
         
@@ -110,6 +126,14 @@ class LocalDB:
             CREATE INDEX IF NOT EXISTS idx_filter_patterns_type 
             ON filter_patterns(filter_type)
         """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_filter_patterns_config_set 
+            ON filter_patterns(config_set_id)
+        """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_filter_config_sets_default 
+            ON filter_config_sets(is_default)
+        """)
         
         self.conn.commit()
     
@@ -126,79 +150,144 @@ class LocalDB:
             VALUES (?, ?, ?, ?)
         """, ('project_root', self.project_root, now, now))
         
-        # Add default exclude patterns if none exist
-        cursor.execute("SELECT COUNT(*) FROM filter_patterns")
+        # Create default filter config set if none exist
+        cursor.execute("SELECT COUNT(*) FROM filter_config_sets")
+        if cursor.fetchone()[0] == 0:
+            cursor.execute("""
+                INSERT INTO filter_config_sets (name, description, is_default, is_active, created_at, updated_at)
+                VALUES (?, ?, 1, 1, ?, ?)
+            """, ('default', 'Default filter configuration', now, now))
+            default_config_id = cursor.lastrowid
+        else:
+            # Get or create default config
+            cursor.execute("SELECT id FROM filter_config_sets WHERE is_default = 1")
+            row = cursor.fetchone()
+            if row:
+                default_config_id = row[0]
+            else:
+                cursor.execute("""
+                    INSERT INTO filter_config_sets (name, description, is_default, is_active, created_at, updated_at)
+                    VALUES (?, ?, 1, 1, ?, ?)
+                """, ('default', 'Default filter configuration', now, now))
+                default_config_id = cursor.lastrowid
+        
+        # Add default exclude patterns if none exist for default config
+        cursor.execute("""
+            SELECT COUNT(*) FROM filter_patterns 
+            WHERE config_set_id = ? OR config_set_id IS NULL
+        """, (default_config_id,))
         if cursor.fetchone()[0] == 0:
             default_excludes = [
-                '**/.git/**',
-                '**/.svn/**',
-                '**/build/**',
-                '**/dist/**',
-                '**/node_modules/**',
-                '**/__pycache__/**',
-                '**/*.pyc',
-                '**/CMakeFiles/**',
-                '**/out/**',
-                '**/.vscode/**',
-                '**/.idea/**',
+                ('**/.git/**', 'folder'),
+                ('**/.svn/**', 'folder'),
+                ('**/build/**', 'folder'),
+                ('**/dist/**', 'folder'),
+                ('**/node_modules/**', 'folder'),
+                ('**/__pycache__/**', 'folder'),
+                ('**/*.pyc', 'extension'),
+                ('**/CMakeFiles/**', 'folder'),
+                ('**/out/**', 'folder'),
+                ('**/.vscode/**', 'folder'),
+                ('**/.idea/**', 'folder'),
             ]
-            for pattern in default_excludes:
+            for pattern, category in default_excludes:
                 cursor.execute("""
-                    INSERT INTO filter_patterns (pattern, filter_type, is_active, created_at)
-                    VALUES (?, 'exclude', 1, ?)
-                """, (pattern, now))
+                    INSERT INTO filter_patterns (config_set_id, pattern, filter_type, pattern_category, is_active, created_at)
+                    VALUES (?, ?, 'exclude', ?, 1, ?)
+                """, (default_config_id, pattern, category, now))
         
         self.conn.commit()
     
-    def add_include_pattern(self, pattern: str):
-        """Add an include pattern for file filtering."""
+    def add_include_pattern(self, pattern: str, config_name: Optional[str] = None):
+        """Add an include pattern for file filtering to active or specified config."""
         from datetime import datetime
         cursor = self.conn.cursor()
+        
+        if config_name:
+            config_id = self.get_filter_config_id(config_name)
+        else:
+            config_id = self.get_active_filter_config_id()
+        
         cursor.execute("""
-            INSERT INTO filter_patterns (pattern, filter_type, is_active, created_at)
-            VALUES (?, 'include', 1, ?)
-        """, (pattern, datetime.now().isoformat()))
+            INSERT INTO filter_patterns (config_set_id, pattern, filter_type, pattern_category, is_active, created_at)
+            VALUES (?, ?, 'include', 'custom', 1, ?)
+        """, (config_id, pattern, datetime.now().isoformat()))
         self.conn.commit()
     
-    def add_exclude_pattern(self, pattern: str):
-        """Add an exclude pattern for file filtering."""
+    def add_exclude_pattern(self, pattern: str, config_name: Optional[str] = None):
+        """Add an exclude pattern for file filtering to active or specified config."""
         from datetime import datetime
         cursor = self.conn.cursor()
+        
+        if config_name:
+            config_id = self.get_filter_config_id(config_name)
+        else:
+            config_id = self.get_active_filter_config_id()
+        
         cursor.execute("""
-            INSERT INTO filter_patterns (pattern, filter_type, is_active, created_at)
-            VALUES (?, 'exclude', 1, ?)
-        """, (pattern, datetime.now().isoformat()))
+            INSERT INTO filter_patterns (config_set_id, pattern, filter_type, pattern_category, is_active, created_at)
+            VALUES (?, ?, 'exclude', 'custom', 1, ?)
+        """, (config_id, pattern, datetime.now().isoformat()))
         self.conn.commit()
     
-    def remove_pattern(self, pattern: str):
-        """Remove a filter pattern."""
+    def remove_pattern(self, pattern: str, config_name: Optional[str] = None):
+        """Remove a filter pattern from active or specified config."""
         cursor = self.conn.cursor()
-        cursor.execute("DELETE FROM filter_patterns WHERE pattern = ?", (pattern,))
+        if config_name:
+            config_id = self.get_filter_config_id(config_name)
+            cursor.execute("DELETE FROM filter_patterns WHERE pattern = ? AND config_set_id = ?", 
+                         (pattern, config_id))
+        else:
+            cursor.execute("DELETE FROM filter_patterns WHERE pattern = ?", (pattern,))
         self.conn.commit()
     
-    def get_include_patterns(self) -> List[str]:
-        """Get all active include patterns."""
+    def get_include_patterns(self, config_name: Optional[str] = None) -> List[str]:
+        """Get all active include patterns from active or specified config."""
         cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT pattern FROM filter_patterns 
-            WHERE filter_type = 'include' AND is_active = 1
-        """)
+        
+        if config_name:
+            config_id = self.get_filter_config_id(config_name)
+        else:
+            config_id = self.get_active_filter_config_id()
+        
+        if config_id:
+            cursor.execute("""
+                SELECT pattern FROM filter_patterns 
+                WHERE config_set_id = ? AND filter_type = 'include' AND is_active = 1
+            """, (config_id,))
+        else:
+            cursor.execute("""
+                SELECT pattern FROM filter_patterns 
+                WHERE filter_type = 'include' AND is_active = 1
+            """)
         return [row[0] for row in cursor.fetchall()]
     
-    def get_exclude_patterns(self) -> List[str]:
-        """Get all active exclude patterns."""
+    def get_exclude_patterns(self, config_name: Optional[str] = None) -> List[str]:
+        """Get all active exclude patterns from active or specified config."""
         cursor = self.conn.cursor()
-        cursor.execute("""
-            SELECT pattern FROM filter_patterns 
-            WHERE filter_type = 'exclude' AND is_active = 1
-        """)
+        
+        if config_name:
+            config_id = self.get_filter_config_id(config_name)
+        else:
+            config_id = self.get_active_filter_config_id()
+        
+        if config_id:
+            cursor.execute("""
+                SELECT pattern FROM filter_patterns 
+                WHERE config_set_id = ? AND filter_type = 'exclude' AND is_active = 1
+            """, (config_id,))
+        else:
+            cursor.execute("""
+                SELECT pattern FROM filter_patterns 
+                WHERE filter_type = 'exclude' AND is_active = 1
+            """)
         return [row[0] for row in cursor.fetchall()]
     
-    def get_all_patterns(self) -> Dict[str, List[str]]:
-        """Get all filter patterns grouped by type."""
+    def get_all_patterns(self, config_name: Optional[str] = None) -> Dict[str, List[str]]:
+        """Get all filter patterns grouped by type from active or specified config."""
         return {
-            'include': self.get_include_patterns(),
-            'exclude': self.get_exclude_patterns()
+            'include': self.get_include_patterns(config_name),
+            'exclude': self.get_exclude_patterns(config_name)
         }
     
     def clear_patterns(self, filter_type: Optional[str] = None):
@@ -234,6 +323,100 @@ class LocalDB:
     def get_project_root(self) -> str:
         """Get the project root directory."""
         return self.get_config('project_root', self.project_root)
+    
+    # Filter Config Set Management
+    
+    def create_filter_config(self, name: str, description: str = "", set_as_default: bool = False) -> int:
+        """Create a new filter configuration set."""
+        from datetime import datetime
+        cursor = self.conn.cursor()
+        now = datetime.now().isoformat()
+        
+        if set_as_default:
+            # Unset other defaults
+            cursor.execute("UPDATE filter_config_sets SET is_default = 0")
+        
+        cursor.execute("""
+            INSERT INTO filter_config_sets (name, description, is_default, is_active, created_at, updated_at)
+            VALUES (?, ?, ?, 1, ?, ?)
+        """, (name, description, 1 if set_as_default else 0, now, now))
+        self.conn.commit()
+        return cursor.lastrowid
+    
+    def get_filter_config_id(self, name: str) -> Optional[int]:
+        """Get filter config set ID by name."""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT id FROM filter_config_sets WHERE name = ?", (name,))
+        row = cursor.fetchone()
+        return row[0] if row else None
+    
+    def get_default_filter_config_id(self) -> Optional[int]:
+        """Get the default filter config set ID."""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT id FROM filter_config_sets WHERE is_default = 1")
+        row = cursor.fetchone()
+        return row[0] if row else None
+    
+    def get_active_filter_config_id(self) -> Optional[int]:
+        """Get the active filter config set ID."""
+        active_config = self.get_config('active_filter_config')
+        if active_config:
+            return self.get_filter_config_id(active_config)
+        return self.get_default_filter_config_id()
+    
+    def set_active_filter_config(self, name: str):
+        """Set the active filter configuration."""
+        self.set_config('active_filter_config', name)
+    
+    def list_filter_configs(self) -> List[Dict]:
+        """List all filter configuration sets."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT id, name, description, is_default, is_active 
+            FROM filter_config_sets
+        """)
+        return [
+            {
+                'id': row[0],
+                'name': row[1],
+                'description': row[2],
+                'is_default': bool(row[3]),
+                'is_active': bool(row[4])
+            }
+            for row in cursor.fetchall()
+        ]
+    
+    def add_pattern_to_config(self, config_id: int, pattern: str, filter_type: str, 
+                              pattern_category: str = 'custom'):
+        """Add a pattern to a specific filter configuration."""
+        from datetime import datetime
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO filter_patterns (config_set_id, pattern, filter_type, pattern_category, is_active, created_at)
+            VALUES (?, ?, ?, ?, 1, ?)
+        """, (config_id, pattern, filter_type, pattern_category, datetime.now().isoformat()))
+        self.conn.commit()
+    
+    def get_patterns_for_config(self, config_id: int) -> Dict[str, List[str]]:
+        """Get all patterns for a specific configuration."""
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT pattern, filter_type, pattern_category
+            FROM filter_patterns
+            WHERE config_set_id = ? AND is_active = 1
+        """, (config_id,))
+        
+        patterns = {'include': [], 'exclude': []}
+        for row in cursor.fetchall():
+            patterns[row[1]].append(row[0])
+        return patterns
+    
+    def get_patterns_for_active_config(self) -> Dict[str, List[str]]:
+        """Get patterns for the currently active configuration."""
+        config_id = self.get_active_filter_config_id()
+        if config_id:
+            return self.get_patterns_for_config(config_id)
+        return {'include': [], 'exclude': []}
     
     def save(self, file_info: FileInfo):
         """

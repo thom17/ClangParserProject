@@ -88,6 +88,26 @@ class ParseManager:
         """Get current filter patterns."""
         return self.db.get_all_patterns()
     
+    def open_filter_config_gui(self):
+        """Open the GUI for configuring filters."""
+        from oms.filter_config_gui import launch_filter_gui
+        launch_filter_gui(self.project_dir, self.db)
+        # Reload filters after GUI closes
+        self._init_filters()
+    
+    def create_filter_config(self, name: str, description: str = ""):
+        """Create a new filter configuration."""
+        return self.db.create_filter_config(name, description)
+    
+    def list_filter_configs(self):
+        """List all available filter configurations."""
+        return self.db.list_filter_configs()
+    
+    def switch_filter_config(self, config_name: str):
+        """Switch to a different filter configuration."""
+        self.db.set_active_filter_config(config_name)
+        self._init_filters()
+    
     def parse_and_save(self, file_path: str) -> FileInfo:
         """
         Complete parsing workflow:
