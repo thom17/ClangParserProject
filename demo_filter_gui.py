@@ -12,15 +12,14 @@ sys.path.insert(0, project_root)
 from oms.parse_manager import ParseManager
 
 
-def demo_filter_gui_basic():
+
+
+def demo_filter_gui_basic(project_dir:str ):
     """Basic demonstration of filter configuration GUI."""
     print("\n" + "="*60)
     print("Demo: Filter Configuration GUI")
     print("="*60)
-    
-    # Use current directory as project
-    project_dir = os.getcwd()
-    
+
     print(f"\nProject directory: {project_dir}")
     print("\n1. Creating ParseManager...")
     manager = ParseManager(project_dir)
@@ -74,14 +73,12 @@ def demo_filter_gui_basic():
     print("\n✓ Demo completed")
 
 
-def demo_programmatic_config():
+def demo_programmatic_config(project_dir: str):
     """Demonstrate programmatic filter configuration."""
     print("\n" + "="*60)
     print("Demo: Programmatic Filter Configuration")
     print("="*60)
-    
-    project_dir = os.getcwd()
-    
+
     print(f"\nProject directory: {project_dir}")
     print("\n1. Creating ParseManager...")
     manager = ParseManager(project_dir)
@@ -220,31 +217,29 @@ def usage_guide():
    - Search function helps with large projects
     """)
 
-
 def main():
-    """Main demo function."""
-    print("\n" + "="*60)
-    print("Filter Configuration GUI - Demonstrations")
-    print("="*60)
-    
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 1:   # python demo_filter_gui.py --gui
+        project_dir = os.getcwd() #현제 작업 경로 가져오기
         if sys.argv[1] == '--guide':
             usage_guide()
             return
         elif sys.argv[1] == '--programmatic':
-            demo_programmatic_config()
+            demo_programmatic_config(project_dir)
             return
         elif sys.argv[1] == '--gui':
-            demo_filter_gui_basic()
+            demo_filter_gui_basic(project_dir)
             return
-    
-    print("\nAvailable demos:")
-    print("  --gui            Open the GUI for filter configuration")
-    print("  --programmatic   Demonstrate programmatic configuration")
-    print("  --guide          Show usage guide")
-    print("\nRun without arguments to see this menu")
-    print("\nExample:")
-    print("  python demo_filter_gui.py --gui")
+    else:
+        # 폴더 선택 창 열기
+        from filemanager.window_file_open import get_folder_path
+        project_dir = get_folder_path('project 선택')
+        if project_dir:
+            demo_filter_gui_basic(project_dir)
+
+
+
+
+
 
 
 if __name__ == "__main__":
