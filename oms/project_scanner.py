@@ -88,6 +88,7 @@ class ProjectScanner:
     def get_folder_hierarchy(self, search_term: str = "") -> Dict[str, List[str]]:
         """
         Get folder hierarchy as a dictionary mapping parent to children.
+        When searching, includes parent folders to maintain tree structure.
         
         Args:
             search_term: Optional search term to filter folders
@@ -96,6 +97,18 @@ class ProjectScanner:
             Dictionary with parent paths as keys and list of child paths as values
         """
         folders = self.get_folders(search_term)
+        
+        # If searching, also include all parent folders to maintain hierarchy
+        if search_term:
+            folders_with_parents = set(folders)
+            for folder in folders:
+                # Add all parent folders
+                parts = folder.split(os.sep)
+                for i in range(1, len(parts)):
+                    parent = os.sep.join(parts[:i])
+                    folders_with_parents.add(parent)
+            folders = sorted(folders_with_parents)
+        
         hierarchy = {'': []}  # Root level folders
         
         # Build hierarchy
@@ -105,7 +118,8 @@ class ProjectScanner:
             
             if parent not in hierarchy:
                 hierarchy[parent] = []
-            hierarchy[parent].append(folder)
+            if folder not in hierarchy[parent]:  # Avoid duplicates
+                hierarchy[parent].append(folder)
         
         return hierarchy
     

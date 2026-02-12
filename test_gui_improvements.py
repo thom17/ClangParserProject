@@ -52,10 +52,19 @@ def test_folder_hierarchy():
         test_children = scanner.get_all_children('test')
         print(f"   'test' all children: {test_children}")
         
-        # Test search with hierarchy
+        # Test search with hierarchy (should include parent folders)
         print("\n3. Testing search with hierarchy")
         hierarchy_filtered = scanner.get_folder_hierarchy('main')
         print(f"   Search 'main' hierarchy: {hierarchy_filtered}")
+        # Should include 'src' as parent even though search is for 'main'
+        assert 'src' in hierarchy_filtered, "Search should include parent folders"
+        assert 'src/main' in hierarchy_filtered.get('src', []), "Search result should be in hierarchy"
+        
+        # Test another search
+        hierarchy_filtered2 = scanner.get_folder_hierarchy('unit')
+        print(f"   Search 'unit' hierarchy: {hierarchy_filtered2}")
+        assert 'test' in hierarchy_filtered2, "Search should include parent folders"
+        assert 'test/unit' in hierarchy_filtered2.get('test', []), "Search result should be in hierarchy"
         
         print("\n✓ Folder hierarchy tests completed!")
         return True
