@@ -85,6 +85,49 @@ class ProjectScanner:
         search_lower = search_term.lower()
         return sorted([f for f in self._folders if search_lower in f.lower()])
     
+    def get_folder_hierarchy(self, search_term: str = "") -> Dict[str, List[str]]:
+        """
+        Get folder hierarchy as a dictionary mapping parent to children.
+        
+        Args:
+            search_term: Optional search term to filter folders
+            
+        Returns:
+            Dictionary with parent paths as keys and list of child paths as values
+        """
+        folders = self.get_folders(search_term)
+        hierarchy = {'': []}  # Root level folders
+        
+        # Build hierarchy
+        for folder in folders:
+            parts = folder.split(os.sep)
+            parent = os.sep.join(parts[:-1]) if len(parts) > 1 else ''
+            
+            if parent not in hierarchy:
+                hierarchy[parent] = []
+            hierarchy[parent].append(folder)
+        
+        return hierarchy
+    
+    def get_all_children(self, folder: str) -> List[str]:
+        """
+        Get all child folders (recursively) for a given folder.
+        
+        Args:
+            folder: Parent folder path
+            
+        Returns:
+            List of all child folder paths
+        """
+        children = []
+        folder_prefix = folder + os.sep if folder else ''
+        
+        for f in self._folders:
+            if f.startswith(folder_prefix) and f != folder:
+                children.append(f)
+        
+        return children
+    
     def get_extensions(self) -> List[str]:
         """
         Get list of all file extensions found.
