@@ -42,6 +42,10 @@ class FilterConfigGUI:
         self.selected_folders = set()
         self.selected_extensions = set()
         
+        # Tree item tracking for folders
+        self.folder_item_map = {}  # Maps folder path to tree item id
+        self.item_folder_map = {}  # Maps tree item id to folder path
+        
         self._create_widgets()
         self._load_existing_config()
     
@@ -203,18 +207,84 @@ class FilterConfigGUI:
         self.preview_text.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
     
     def _populate_folders(self):
-        """Populate folder tree."""
+        """Populate folder tree with hierarchical structure."""
+        # Clear existing items
         self.folder_tree.delete(*self.folder_tree.get_children())
+        self.folder_item_map.clear()
+        self.item_folder_map.clear()
         
         folder_stats = self.scanner.get_folder_stats()
         search_term = self.folder_search_var.get()
-        folders = self.scanner.get_folders(search_term)
         
-        for folder in folders:
+        # Get hierarchy
+        hierarchy = self.scanner.get_folder_hierarchy(search_term)
+        
+        # Build tree recursively starting from root
+        self._build_folder_tree('', '', hierarchy, folder_stats)
+    
+    def _build_folder_tree(self, parent_path: str, parent_item: str, 
+                           hierarchy: Dict[str, List[str]], folder_stats: Dict[str, int]):
+        """
+        Recursively build folder tree.
+        
+        Args:
+            parent_path: Parent folder path
+            parent_item: Parent tree item id
+            hierarchy: Folder hierarchy dictionary
+            folder_stats: Folder statistics dictionary
+        """
+        if parent_path not in hierarchy:
+            return
+        
+        # Get children for this parent
+        children = sorted(hierarchy[parent_path])
+        
+        for folder in children:
+            # Get just the folder name (not full path)
+            folder_name = os.path.basename(folder)
             count = folder_stats.get(folder, 0)
-            checkbox = '☑' if folder in self.selected_folders else '☐'
-            self.folder_tree.insert('', 'end', text=f'{checkbox} {folder}', 
-                                   values=(count,), tags=(folder,))
+            
+            # Determine checkbox state
+            checkbox = self._get_folder_checkbox_state(folder)
+            
+            # Insert into tree
+            if parent_item:
+                item_id = self.folder_tree.insert(parent_item, 'end', 
+                                                  text=f'{checkbox} {folder_name}',
+                                                  values=(count,), 
+                                                  tags=(folder,))
+            else:
+                item_id = self.folder_tree.insert('', 'end', 
+                                                  text=f'{checkbox} {folder_name}',
+                                                  values=(count,), 
+                                                  tags=(folder,))
+            
+            # Store mappings
+            self.folder_item_map[folder] = item_id
+            self.item_folder_map[item_id] = folder
+            
+            # Recursively add children
+            self._build_folder_tree(folder, item_id, hierarchy, folder_stats)
+    
+    def _get_folder_checkbox_state(self, folder: str) -> str:
+        """
+        Get checkbox state for a folder (checked, unchecked, or partial).
+        
+        Args:
+            folder: Folder path
+            
+        Returns:
+            Checkbox character
+        """
+        if folder in self.selected_folders:
+            return '☑'
+        
+        # Check if any children are selected (partial state)
+        children = self.scanner.get_all_children(folder)
+        if children and any(child in self.selected_folders for child in children):
+            return '☐'  # Could use '◫' for partial, but keeping simple for now
+        
+        return '☐'
     
     def _populate_extensions(self):
         """Populate extension tree."""
@@ -234,17 +304,52 @@ class FilterConfigGUI:
         self._populate_folders()
     
     def _on_folder_click(self, event):
-        """Handle folder checkbox click."""
+        """Handle folder checkbox click with parent-child selection."""
         item = self.folder_tree.identify('item', event.x, event.y)
         if item:
             tags = self.folder_tree.item(item, 'tags')
             if tags:
                 folder = tags[0]
+                
+                # Toggle selection
                 if folder in self.selected_folders:
-                    self.selected_folders.remove(folder)
+                    # Deselect this folder and all children
+                    self._deselect_folder_and_children(folder)
                 else:
-                    self.selected_folders.add(folder)
+                    # Select this folder and all children
+                    self._select_folder_and_children(folder)
+                
                 self._populate_folders()
+    
+    def _select_folder_and_children(self, folder: str):
+        """
+        Select a folder and all its children.
+        
+        Args:
+            folder: Folder path to select
+        """
+        # Select the folder
+        self.selected_folders.add(folder)
+        
+        # Select all children
+        children = self.scanner.get_all_children(folder)
+        for child in children:
+            self.selected_folders.add(child)
+    
+    def _deselect_folder_and_children(self, folder: str):
+        """
+        Deselect a folder and all its children.
+        
+        Args:
+            folder: Folder path to deselect
+        """
+        # Deselect the folder
+        self.selected_folders.discard(folder)
+        
+        # Deselect all children
+        children = self.scanner.get_all_children(folder)
+        for child in children:
+            self.selected_folders.discard(child)
     
     def _on_extension_click(self, event):
         """Handle extension checkbox click."""
