@@ -259,7 +259,7 @@ def parsing(cursor_list: List[Cursor], do_update = True, b_print = False) ->Tupl
         size = len(sorted_key)
         done = 0
         for fun_src_name in sorted_key:
-            mycursor = clang_src_map[fun_src_name]
+            mycursor = clang_src_map[fun_src_name][0]
             method_info = all_data_set.functionInfos[fun_src_name]
             update_call(mycursor, method_info, all_data_set, clang_src_map)
             done += 1
