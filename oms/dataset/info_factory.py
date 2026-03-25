@@ -61,7 +61,7 @@ def new_class_info(mycursor: MyCursor, base_info_set, clang_src_map):
     # for info in in_defs:
     #     cls_info.relationInfo.hasInfoMap.put_info(info)
 
-    clang_src_map[cls_info.src_name] = mycursor
+    clang_src_map[cls_info.src_name].append(mycursor)
 
     return cls_info
 
@@ -73,7 +73,7 @@ def new_var_info(mycursor: MyCursor, base_info_set, clang_src_map):
     core_info.type_str = mycursor.node.type.spelling
 
     var_info = VarInfo(core_info, owner_oms)
-    clang_src_map[var_info.src_name] = mycursor
+    clang_src_map[var_info.src_name].append(mycursor)
     return var_info
 
 
@@ -83,14 +83,14 @@ def new_fun_info(mycursor: MyCursor, base_info_set, clang_src_map):
         owner_oms = Cursor2OMS(mycursor.node.semantic_parent, base_info_set, clang_src_map)
     except Exception as e:
         owner_oms = None
-        print(f"Error in new_fun_info: {e}\n{mycursor}")
+        print(f"Error in new_fun_info: {e}\n\t{mycursor.get_src_name()} : {mycursor}")
     finally:
         pass
     core_info = make_core_info(mycursor)
     core_info.type_str = mycursor.node.result_type.spelling
     method_info = FunctionInfo(core_info, owner_oms)
 
-    clang_src_map[method_info.src_name] = mycursor
+    clang_src_map[method_info.src_name].append(mycursor)
     return method_info
 
 def __cursor2cls_info(cursor: Cursor, base_info_set, clang_src_map):
@@ -208,7 +208,7 @@ def get_target_cursor(data):
 
 
 
-def parsing(cursor_list: List[Cursor], do_update = True) ->Tuple[InfoSet, Dict[str, List[Cursor]]]:
+def parsing(cursor_list: List[Cursor], do_update = True, b_print = False) ->Tuple[InfoSet, Dict[str, List[Cursor]]]:
     """
     Cursor 2 OMS
     없으면 OMS 생성
@@ -216,7 +216,7 @@ def parsing(cursor_list: List[Cursor], do_update = True) ->Tuple[InfoSet, Dict[s
     :return InfoSet:
     """
 
-    def update_call(my_cursor: MyCursor, oms_data: InfoBase, oms_set: InfoSet, clang_src_map: [str, Cursor]):
+    def update_call(my_cursor: MyCursor, oms_data: InfoBase, oms_set: InfoSet, clang_src_map: Dict[str, Cursor]):
         visit_line_map = my_cursor.get_visit_line_map()
 
         for line in visit_line_map:
@@ -249,23 +249,26 @@ def parsing(cursor_list: List[Cursor], do_update = True) ->Tuple[InfoSet, Dict[s
         data = Cursor2OMS(cursor, all_data_set, clang_src_map)
         done += 1
         percent = (done/size) * 100
-        print(f"\rMapping ({percent:.2f}%) {done}/{size}", end="")
-
-    print("\nMapping done")
+        if b_print:
+            print(f"\rMapping ({percent:.2f}%) {done}/{size}", end="")
+    if b_print:
+        print("\nMapping done")
 
     if do_update:
         sorted_key = sorted(all_data_set.functionInfos)
         size = len(sorted_key)
         done = 0
         for fun_src_name in sorted_key:
-            mycursor = clang_src_map[fun_src_name]
+            mycursor = clang_src_map[fun_src_name][0]
             method_info = all_data_set.functionInfos[fun_src_name]
             update_call(mycursor, method_info, all_data_set, clang_src_map)
             done += 1
             percent = (done / size) * 100
-            print(f"\rUpdate Call ({percent:.2f}%) {done}/{size}", end="")
+            if b_print:
+                print(f"\rUpdate Call ({percent:.2f}%) {done}/{size}", end="")
 
-        print("\nUpdate done")
+        if b_print:
+            print("\nUpdate done")
 
     return all_data_set, clang_src_map
 
