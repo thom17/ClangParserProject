@@ -276,7 +276,7 @@ TaskManager.apply(main_task_id, HashResultHandler())
 
 ### 6.2 테스트 코드 (스케치)
 ```python
-# scripts/test_hash_task.py
+# scripts/mcp_hash_task.py
 
 import hashlib, json
 from oms.parse_manager import ParseManager
