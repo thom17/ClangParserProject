@@ -98,7 +98,14 @@ class ParseManager:
     def create_filter_config(self, name: str, description: str = ""):
         """Create a new filter configuration."""
         return self.db.create_filter_config(name, description)
-    
+
+    def get_filter_config_by_name(self, name: str):
+        return self.db.get_filter_config_by_name(name)
+
+    def create_or_get_filter_config(self, name: str, description: str = "") -> int:
+        return self.db.create_or_get_filter_config(name, description)
+
+
     def list_filter_configs(self):
         """List all available filter configurations."""
         return self.db.list_filter_configs()
@@ -108,7 +115,7 @@ class ParseManager:
         self.db.set_active_filter_config(config_name)
         self._init_filters()
     
-    def parse_and_save(self, file_path: str) -> FileInfo:
+    def parse_and_save(self, file_path: str, call_update: bool = False) -> FileInfo:
         """
         Complete parsing workflow:
         1. Parse with CUnit
@@ -151,7 +158,7 @@ class ParseManager:
         if file_info is None:
             # File not in database, parse it
             print(f"New file: {file_path}")
-            return self.parse_and_save(file_path)
+            return self.parse_and_save(file_path, )
         
         # Check if reparse is needed
         if file_info.needs_reparse():
@@ -233,7 +240,7 @@ class ParseManager:
         
         return results
     
-    def _parse_info_set(self, cunit: CUnit) -> InfoSet:
+    def _parse_info_set(self, cunit: CUnit, do_update: bool = False) -> InfoSet:
         """
         Parse InfoSet from CUnit using existing info_factory logic.
         Reuses the CUnit's cursor list without redundant parsing.
@@ -260,7 +267,7 @@ class ParseManager:
         # Pass deduplicated cursor list to parsing
         # Note: do_update=False to avoid issues with duplicate src_names in call relationships
         # The call relationships can be populated separately if needed
-        info_set, clang_src_map = parsing(unique_cursors, do_update=False)
+        info_set, clang_src_map = parsing(unique_cursors, do_update=do_update)
         
         return info_set
     

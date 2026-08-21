@@ -25,12 +25,12 @@ manager = ParseManager(path)
 # manager.open_filter_config_gui()
 # print('opened filter configuration GUI')
 
-# 필터 옵션 로드, 저장, 목록 출력 둥 확인 가능한 기능 필요 -> 무시하고 중복 생성시 crush
-# Or programmatically
-# config_id = manager.create_filter_config('ap', 'Planning 관련 필터링')
-# for dir in SKIP_NOT_SYSTEM:
-#     manager.db.add_pattern_to_config(config_id, '**/' + dir + '/**', 'exclude', 'folder')
-# manager.switch_filter_config('ap')
+# # 필터 옵션 로드, 저장, 목록 출력 둥 확인 가능한 기능 필요 -> 무시하고 중복 생성시 crush
+# # Or programmatically
+config_id = manager.create_or_get_filter_config('ap', 'Planning 관련 필터링')
+for dir in SKIP_NOT_SYSTEM:
+    manager.db.add_pattern_to_config(config_id, '**/' + dir + '/**', 'exclude', 'folder')
+manager.switch_filter_config('ap')
 
 # Parse with filters
 results = manager.smart_parse_project(use_filters=True)
@@ -39,5 +39,3 @@ all_file_infos = manager.db.load_all()
 print('Parsed Infos:')
 for file_info in all_file_infos:
     print(file_info)
-
-

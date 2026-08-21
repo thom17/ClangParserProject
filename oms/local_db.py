@@ -4,7 +4,7 @@ Supports project-based configuration with include/exclude filters.
 """
 import sqlite3
 import os
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 from oms.dataset.file_info import FileInfo, FileInfoData
 from oms.info_set import InfoSet
 from oms.dataset.class_info import ClassInfo
@@ -417,7 +417,42 @@ class LocalDB:
         if config_id:
             return self.get_patterns_for_config(config_id)
         return {'include': [], 'exclude': []}
-    
+
+    def get_filter_config_by_name(self, name: str) -> Optional[Tuple[int, str, str]]:
+        """
+        Find filter config by unique name.
+
+        Returns:
+            (id, name, description) tuple or None
+        """
+        cursor = self.conn.execute(
+            """
+            SELECT id, name, description
+            FROM filter_config_sets
+            WHERE name = ?
+            """,
+            (name,),
+        )
+        return cursor.fetchone()
+
+    def create_or_get_filter_config(self, name: str, description: str = "") -> int:
+        """
+        Create a filter config if not exists, otherwise return existing id.
+        Idempotent helper for initialization scripts.
+        """
+        row = self.get_filter_config_by_name(name)
+        if row is not None:
+            return int(row[0])
+
+        # 이미 있는 create_filter_config 재사용 가능
+        try:
+            return int(self.create_filter_config(name, description))
+        except sqlite3.IntegrityError:
+            row = self.get_filter_config_by_name(name)
+            if row is not None:
+                return int(row[0])
+            raise
+
     def save(self, file_info: FileInfo):
         """
         Save FileInfo and all associated InfoBase objects to database.
